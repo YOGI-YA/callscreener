@@ -44,6 +44,10 @@ dependencies {
     implementation "androidx.core:core-ktx:1.13.1"
     implementation "com.google.android.material:material:1.12.0"
     
+    // Capacitor Android Native Bridge
+    implementation "com.capacitorjs:core:7.0.1"
+    implementation "com.capacitorjs:android:7.0.1"
+
     // HTTP & JSON Client for Telecom background networking
     implementation "com.squareup.okhttp3:okhttp:4.12.0"
     implementation "com.google.code.gson:gson:2.11.0"
