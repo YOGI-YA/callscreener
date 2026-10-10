@@ -36,7 +36,8 @@ export class LLMScreeningEngine {
    * Executes LLM API or Intelligent Heuristic Engine
    */
   private static async performLLMAnalysis(payload: IncomingCallPayload, startTime: number): Promise<ScreeningResult> {
-    if (config.geminiApiKey) {
+    const isTest = process.env.NODE_ENV === 'test';
+    if (config.geminiApiKey && config.geminiApiKey.length > 10 && !isTest) {
       return await this.callGeminiApi(payload, startTime);
     } else {
       // Offline / Intelligent Mock Engine for development & testing without API key
@@ -135,8 +136,10 @@ OUTPUT FORMAT (Respond with JSON ONLY):
    * Intelligent heuristic simulation engine when no API key is set
    */
   private static async simulateIntelligentAnalysis(payload: IncomingCallPayload, startTime: number): Promise<ScreeningResult> {
-    // Artificial small latency to simulate realistic LLM processing (50-180ms)
-    await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 80) + 40));
+    // Artificial small latency to simulate realistic LLM processing in dev
+    if (process.env.NODE_ENV !== 'test') {
+      await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 80) + 40));
+    }
 
     const text = `${payload.callerName || ''} ${payload.callerIntent || ''} ${payload.simulatedAudioTranscript || ''}`.toLowerCase();
     const phone = payload.phoneNumber.replace(/[\s\-\(\)\.]/g, '');

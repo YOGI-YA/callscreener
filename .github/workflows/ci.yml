@@ -1,0 +1,39 @@
+name: CI Test Suite
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Backend & Frontend Unit/Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: |
+          npm install --prefix backend
+          npm install --prefix frontend
+
+      - name: Run Backend Tests
+        run: npm run test --prefix backend
+
+      - name: Run Frontend Tests
+        run: npm run test --prefix frontend
+
+      - name: Verify Backend Build
+        run: npm run build --prefix backend
+
+      - name: Verify Frontend Build
+        run: npm run build --prefix frontend
