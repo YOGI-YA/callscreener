@@ -48,7 +48,7 @@ class AiCallScreeningService : CallScreeningService() {
             else -> "UNKNOWN"
         }
 
-        Log.i(TAG, "Incoming Telecom Call received: $phoneNumber ($callerName) [Presentation: $presentation]")
+        Log.i(TAG, "Incoming Telecom Call received on physical phone: $phoneNumber ($callerName) [Presentation: $presentation]")
 
         // 1. Stage 1: Ultra-fast local deterministic check (<1ms)
         val fastRuleResult = FastLocalRulesEngine.evaluate(applicationContext, phoneNumber)
@@ -59,18 +59,29 @@ class AiCallScreeningService : CallScreeningService() {
             return
         }
 
-        // 2. Stage 2: Asynchronous Cloud LLM Query with Strict Deadline
+        // 2. Stage 2: Pure On-Device AI / Local Inference with Strict Deadline
         serviceScope.launch {
             val screeningResult: ScreeningData = try {
-                withTimeoutOrNull(NETWORK_DEADLINE_MS) {
-                    queryBackendScreening(phoneNumber, callerName, presentation)
-                } ?: FastLocalRulesEngine.generateFallback(phoneNumber, "Android 2.5s Deadline Reached")
+                val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val useOnDeviceOnly = prefs.getBoolean("use_on_device_only", true)
+
+                if (useOnDeviceOnly) {
+                    // Pure physical phone execution: zero laptop, zero cloud
+                    withTimeoutOrNull(NETWORK_DEADLINE_MS) {
+                        OnDeviceLlmEngine.screenCallOnDevice(applicationContext, phoneNumber, callerName, null)
+                    } ?: FastLocalRulesEngine.generateFallback(phoneNumber, "On-device processing deadline reached")
+                } else {
+                    // Optional network query mode
+                    withTimeoutOrNull(NETWORK_DEADLINE_MS) {
+                        queryBackendScreening(phoneNumber, callerName, presentation)
+                    } ?: OnDeviceLlmEngine.screenCallOnDevice(applicationContext, phoneNumber, callerName, null)
+                }
             } catch (e: Exception) {
-                Log.w(TAG, "Backend network error during screening, executing local fallback", e)
-                FastLocalRulesEngine.generateFallback(phoneNumber, "Network Error: ${e.localizedMessage}")
+                Log.w(TAG, "Screening error, executing local fallback", e)
+                FastLocalRulesEngine.generateFallback(phoneNumber, "Error: ${e.localizedMessage}")
             }
 
-            Log.i(TAG, "Screening verdict determined: ${screeningResult.verdict} [Score: ${screeningResult.riskScore}] by ${screeningResult.engine}")
+            Log.i(TAG, "Physical On-Device Verdict: ${screeningResult.verdict} [Score: ${screeningResult.riskScore}] by ${screeningResult.engine}")
             val androidResponse = FastLocalRulesEngine.buildAndroidCallResponse(screeningResult)
             respondToCall(callDetails, androidResponse)
         }
