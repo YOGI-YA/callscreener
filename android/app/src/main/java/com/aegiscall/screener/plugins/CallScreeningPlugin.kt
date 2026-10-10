@@ -66,7 +66,7 @@ class CallScreeningPlugin : Plugin() {
     }
 
     @ActivityCallback
-    private fun handleRoleResult(call: PluginCall, result: ActivityResult) {
+    fun handleRoleResult(call: PluginCall, result: ActivityResult) {
         val ret = JSObject()
         if (result.resultCode == Activity.RESULT_OK) {
             ret.put("success", true)
