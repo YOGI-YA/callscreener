@@ -51,23 +51,23 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Active Call Defense
+            Live AI Call Screener
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--accent-glow)' }}>
-            <Sparkles size={14} /> AI Real-Time
+            <Sparkles size={14} /> Voice Assistant
           </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
           <div style={{ fontSize: '2.8rem', fontWeight: 800, letterSpacing: '-0.03em', color: '#fff' }}>
-            {spamRate}%
+            {stats?.totalCallsScreened ?? 0}
           </div>
           <div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-safe)' }}>
-              Spam Block Rate
+              Calls Screened by AI
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {stats?.totalSpamBlocked ?? 0} threats intercepted
+              {stats?.totalSpamBlocked ?? 0} screened out • {stats?.totalCallsAllowed ?? 0} connected
             </div>
           </div>
         </div>
@@ -75,12 +75,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         {/* 3 Metric Pills */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 8 }}>
           <div style={{ background: 'rgba(0,0,0,0.25)', padding: '10px 8px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{stats?.totalCallsScreened ?? 0}</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2 }}>Screened</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{spamRate}%</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2 }}>Screen Rate</div>
           </div>
           <div style={{ background: 'rgba(0,0,0,0.25)', padding: '10px 8px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-safe)' }}>{stats?.totalCallsAllowed ?? 0}</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2 }}>Allowed</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2 }}>Connected</div>
           </div>
           <div style={{ background: 'rgba(0,0,0,0.25)', padding: '10px 8px', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-warning)' }}>{stats?.totalCallsSilenced ?? 0}</div>

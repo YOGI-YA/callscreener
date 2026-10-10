@@ -19,6 +19,12 @@ export type ScreeningEngine =
   | 'BLACKLIST_RULE'
   | 'SIMULATION';
 
+export interface DialogueTurn {
+  sender: 'AI_ASSISTANT' | 'CALLER';
+  text: string;
+  timestamp: string;
+}
+
 export interface CallResponseActions {
   disallowCall: boolean;
   silenceCall: boolean;
@@ -37,6 +43,7 @@ export interface IncomingCallPayload {
   callerIntent?: string;
   contactExistsInAddressBook?: boolean;
   callPresentationMode?: 'ALLOWED' | 'RESTRICTED' | 'UNKNOWN' | 'PAYPHONE';
+  dialogueHistory?: DialogueTurn[];
 }
 
 export interface ScreeningResult {
@@ -52,6 +59,9 @@ export interface ScreeningResult {
   engine: ScreeningEngine;
   latencyMs: number;
   timestamp: string;
+  callerIntentSummary?: string;
+  dialogueTurns?: DialogueTurn[];
+  suggestedSmartReplies?: string[];
   suggestedActions: CallResponseActions;
   metadata?: {
     spoofProbability?: number;
@@ -84,9 +94,10 @@ export interface CallScreeningStats {
 export interface AppSettings {
   backendApiUrl: string;
   autoBlockHighRiskSpam: boolean;
-  riskThreshold: number; // 0-100 (e.g., 75)
+  riskThreshold: number;
   silenceUnknownCallers: boolean;
   enableFastFallback: boolean;
   hapticFeedback: boolean;
   rolePermissionGranted: boolean;
+  aiAssistantGreeting: string;
 }

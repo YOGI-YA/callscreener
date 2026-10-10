@@ -7,7 +7,7 @@ describe('AegisCall AI Frontend Application', () => {
   it('renders application header and branding', async () => {
     render(<App />);
     expect(screen.getAllByText('AegisCall AI')[0]).toBeInTheDocument();
-    expect(screen.getByText(/Active Call Defense/i)).toBeInTheDocument();
+    expect(screen.getByText(/Live AI Call Screener/i)).toBeInTheDocument();
   });
 
   it('navigates between navigation tabs', async () => {
