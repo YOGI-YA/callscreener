@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">AegisCall AI</string>
+    <string name="title_activity_main">AegisCall AI</string>
+    <string name="package_name">com.aegiscall.screener</string>
+    <string name="custom_url_scheme">com.aegiscall.screener</string>
+    <string name="call_screening_service_desc">AI Telecom Screening &amp; Anti-Spam Protection</string>
+</resources>

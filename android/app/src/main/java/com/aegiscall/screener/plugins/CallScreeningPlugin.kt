@@ -1,0 +1,107 @@
+package com.aegiscall.screener.plugins
+
+import android.app.Activity
+import android.app.role.RoleManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.activity.result.ActivityResult
+import com.getcapacitor.JSObject
+import com.getcapacitor.Plugin
+import com.getcapacitor.PluginCall
+import com.getcapacitor.PluginMethod
+import com.getcapacitor.annotation.ActivityCallback
+import com.getcapacitor.annotation.CapacitorPlugin
+
+@CapacitorPlugin(name = "CallScreeningBridge")
+class CallScreeningPlugin : Plugin() {
+
+    companion object {
+        private const val PREFS_NAME = "aegis_call_screener_prefs"
+        private const val KEY_API_URL = "backend_api_url"
+    }
+
+    @PluginMethod
+    fun checkScreeningRole(call: PluginCall) {
+        val ret = JSObject()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = context.getSystemService(Context.ROLE_SERVICE) as? RoleManager
+            val isHeld = roleManager?.isRoleHeld(RoleManager.ROLE_CALL_SCREENING) ?: false
+            ret.put("roleGranted", isHeld)
+            ret.put("isDefaultScreener", isHeld)
+        } else {
+            ret.put("roleGranted", true)
+            ret.put("isDefaultScreener", true)
+        }
+
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun requestScreeningRole(call: PluginCall) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = context.getSystemService(Context.ROLE_SERVICE) as? RoleManager
+            if (roleManager == null || !roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
+                call.reject("RoleManager.ROLE_CALL_SCREENING is not available on this device")
+                return
+            }
+
+            if (roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
+                val ret = JSObject()
+                ret.put("success", true)
+                ret.put("message", "Role is already held")
+                call.resolve(ret)
+                return
+            }
+
+            val intent: Intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
+            startActivityForResult(call, intent, "handleRoleResult")
+        } else {
+            val ret = JSObject()
+            ret.put("success", true)
+            ret.put("message", "Legacy Android version (Pre-Android 10)")
+            call.resolve(ret)
+        }
+    }
+
+    @ActivityCallback
+    private fun handleRoleResult(call: PluginCall, result: ActivityResult) {
+        val ret = JSObject()
+        if (result.resultCode == Activity.RESULT_OK) {
+            ret.put("success", true)
+            ret.put("granted", true)
+        } else {
+            ret.put("success", false)
+            ret.put("granted", false)
+        }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun getNativeScreenerConfig(call: PluginCall) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val url = prefs.getString(KEY_API_URL, "http://10.0.2.2:4000") ?: "http://10.0.2.2:4000"
+
+        val ret = JSObject()
+        ret.put("backendUrl", url)
+        ret.put("fastRulesActive", true)
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun setNativeScreenerConfig(call: PluginCall) {
+        val url = call.getString("backendUrl")
+        if (url.isNullOrBlank()) {
+            call.reject("backendUrl is required")
+            return
+        }
+
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_API_URL, url).apply()
+
+        val ret = JSObject()
+        ret.put("success", true)
+        call.resolve(ret)
+    }
+}
