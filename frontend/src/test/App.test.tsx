@@ -6,7 +6,7 @@ import { App } from '../App';
 describe('AegisCall AI Frontend Application', () => {
   it('renders application header and branding', async () => {
     render(<App />);
-    expect(screen.getByText('AegisCall AI')).toBeInTheDocument();
+    expect(screen.getAllByText('AegisCall AI')[0]).toBeInTheDocument();
     expect(screen.getByText(/Active Call Defense/i)).toBeInTheDocument();
   });
 

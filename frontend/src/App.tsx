@@ -10,6 +10,7 @@ import { IncomingCallOverlay } from './components/IncomingCallOverlay';
 import { CallModal } from './components/CallModal';
 import { ApiService } from './services/api';
 import { CapacitorService } from './services/capacitorService';
+import { AutoSetupWizard } from './components/AutoSetupWizard';
 import { IncomingCallPayload, ScreeningResult, CallScreeningStats, ScreeningRule, ScreeningVerdict } from './types';
 
 export const App: React.FC = () => {
@@ -22,6 +23,7 @@ export const App: React.FC = () => {
     latencyMs: 0
   });
   const [roleGranted, setRoleGranted] = useState<boolean>(false);
+  const [showAutoSetup, setShowAutoSetup] = useState<boolean>(false);
 
   // Live incoming call simulation state
   const [incomingCall, setIncomingCall] = useState<IncomingCallPayload | null>(null);
@@ -53,6 +55,9 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    if (ApiService.isFirstRun()) {
+      setShowAutoSetup(true);
+    }
     refreshAllData();
     const interval = setInterval(() => {
       ApiService.checkHealth().then(setBackendStatus).catch(() => {});
@@ -228,6 +233,16 @@ export const App: React.FC = () => {
               setActiveResult(null);
             }}
             onOverrideAction={handleOverrideAction}
+          />
+        )}
+
+        {/* Automatic First-Run Onboarding Setup Wizard */}
+        {showAutoSetup && (
+          <AutoSetupWizard
+            onComplete={() => {
+              setShowAutoSetup(false);
+              refreshAllData();
+            }}
           />
         )}
 
