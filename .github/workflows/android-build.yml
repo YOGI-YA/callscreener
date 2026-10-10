@@ -60,7 +60,8 @@ jobs:
           ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
           cd android
-          gradle assembleDebug --info --stacktrace
+          chmod +x gradlew
+          ./gradlew assembleDebug --info --stacktrace
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4

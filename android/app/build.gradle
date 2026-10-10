@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace 'com.aegiscall.screener'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.aegiscall.screener"
@@ -41,6 +41,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:2.1.0"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
     implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "androidx.activity:activity-ktx:1.9.3"
     implementation "androidx.core:core-ktx:1.13.1"
     implementation "com.google.android.material:material:1.12.0"
     
