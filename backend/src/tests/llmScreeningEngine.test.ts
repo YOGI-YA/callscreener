@@ -55,4 +55,30 @@ describe('LLMScreeningEngine', () => {
     expect(result.verdict).toBe('SILENCE');
     expect(result.suggestedActions.silenceCall).toBe(true);
   });
+
+  it('screens Hinglish Zomato food delivery call as SAFE ALLOW', async () => {
+    const result = await LLMScreeningEngine.screenCall({
+      phoneNumber: '+91-98111-22233',
+      callerName: 'Zomato Delivery Partner',
+      simulatedAudioTranscript: 'Bhaiya main Zomato se food parcel leke aapke building gate ke paas khada hoon. Guard entry permit kar dijiye.',
+      callerIntent: 'Food delivery'
+    });
+
+    expect(result.verdict).toBe('ALLOW');
+    expect(result.category).toBe('DELIVERY_SERVICE');
+    expect(result.riskScore).toBeLessThanOrEqual(20);
+  });
+
+  it('screens Devanagari Hindi Apollo hospital appointment as SAFE ALLOW', async () => {
+    const result = await LLMScreeningEngine.screenCall({
+      phoneNumber: '+91-11-2659-8700',
+      callerName: 'Apollo Hospitals Reception',
+      simulatedAudioTranscript: 'नमस्ते, अपोलो अस्पताल से कॉल है। कल सुबह डॉक्टर वर्मा के साथ आपका अपॉइंटमेंट है।',
+      callerIntent: 'Medical appointment'
+    });
+
+    expect(result.verdict).toBe('ALLOW');
+    expect(result.category).toBe('MEDICAL_APPOINTMENT');
+    expect(result.riskScore).toBeLessThanOrEqual(20);
+  });
 });

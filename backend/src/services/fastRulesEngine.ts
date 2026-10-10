@@ -51,7 +51,21 @@ export class FastRulesEngine {
     { phrase: 'chinese embassy package', score: 94, category: 'PHISHING_SCAM' as const, reason: 'Detected international courier/embassy extortion robocall' },
     { phrase: 'car warranty expired', score: 85, category: 'ROBOCALL' as const, reason: 'Detected auto warranty robocall pattern' },
     { phrase: 'free vacation cruise winner', score: 88, category: 'TELEMARKETING' as const, reason: 'Detected deceptive prize/vacation lead generator' },
-    { phrase: 'lower your credit card interest', score: 82, category: 'TELEMARKETING' as const, reason: 'Detected unsolicited debt reduction telemarketing' }
+    { phrase: 'lower your credit card interest', score: 82, category: 'TELEMARKETING' as const, reason: 'Detected unsolicited debt reduction telemarketing' },
+    // Hindi & Hinglish Fraud Signatures
+    { phrase: 'bijli bill', score: 96, category: 'PHISHING_SCAM' as const, reason: 'Detected Hindi/Hinglish electricity bill disconnection phishing scam (बिजली बिल फ्रॉड)' },
+    { phrase: 'power cut', score: 92, category: 'PHISHING_SCAM' as const, reason: 'Detected urgent electricity utility cut phishing scam' },
+    { phrase: 'otp share', score: 98, category: 'PHISHING_SCAM' as const, reason: 'Detected Hindi/Hinglish bank OTP harvesting fraud' },
+    { phrase: 'otp batayein', score: 98, category: 'PHISHING_SCAM' as const, reason: 'Detected Hindi OTP extraction attempt' },
+    { phrase: 'kyc update', score: 95, category: 'PHISHING_SCAM' as const, reason: 'Detected fake banking/SIM KYC expiry extortion scam' },
+    { phrase: 'account block ho jayega', score: 96, category: 'PHISHING_SCAM' as const, reason: 'Detected bank account freeze intimidation scam' },
+    { phrase: 'debit card block', score: 94, category: 'PHISHING_SCAM' as const, reason: 'Detected card suspension phishing scam' },
+    { phrase: 'lottery lag gayi', score: 95, category: 'PHISHING_SCAM' as const, reason: 'Detected lottery/prize money advance fee fraud' },
+    { phrase: 'kbc prize', score: 95, category: 'PHISHING_SCAM' as const, reason: 'Detected fake KBC / Kaun Banega Crorepati lottery scam' },
+    { phrase: 'sim card block', score: 93, category: 'PHISHING_SCAM' as const, reason: 'Detected fake telecom SIM card deactivation scam' },
+    { phrase: 'बिजली बिल', score: 96, category: 'PHISHING_SCAM' as const, reason: 'Detected Devanagari Hindi electricity disconnection scam' },
+    { phrase: 'ओटीपी', score: 98, category: 'PHISHING_SCAM' as const, reason: 'Detected Devanagari Hindi OTP harvesting attempt' },
+    { phrase: 'लॉटरी', score: 95, category: 'PHISHING_SCAM' as const, reason: 'Detected Devanagari Hindi lottery scam' }
   ];
 
   private static customRules: ScreeningRule[] = [];

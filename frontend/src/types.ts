@@ -91,6 +91,8 @@ export interface CallScreeningStats {
   spamBlockRate: number;
 }
 
+export type LanguagePreference = 'EN' | 'HI' | 'HINGLISH';
+
 export interface AppSettings {
   backendApiUrl: string;
   autoBlockHighRiskSpam: boolean;
@@ -99,5 +101,6 @@ export interface AppSettings {
   enableFastFallback: boolean;
   hapticFeedback: boolean;
   rolePermissionGranted: boolean;
+  language: LanguagePreference;
   aiAssistantGreeting: string;
 }

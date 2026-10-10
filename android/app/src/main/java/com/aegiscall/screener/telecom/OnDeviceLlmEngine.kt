@@ -81,12 +81,13 @@ object OnDeviceLlmEngine {
         var rationale = "On-device AI verified no malicious intent patterns."
         var spoofProb = 0.05
 
-        if (text.contains("irs") || text.contains("warrant") || text.contains("arrest") || text.contains("gift card") || text.contains("social security")) {
+        if (text.contains("irs") || text.contains("warrant") || text.contains("arrest") || text.contains("gift card") || text.contains("social security") ||
+            text.contains("bijli") || text.contains("power cut") || text.contains("otp") || text.contains("kyc") || text.contains("block ho jayega") || text.contains("lottery") || text.contains("kbc") || text.contains("बिजली") || text.contains("ओटीपी")) {
             verdict = "REJECT"
             riskScore = 96
             riskLevel = "CRITICAL_SPAM"
             category = "PHISHING_SCAM"
-            rationale = "On-device AI detected urgent government impersonation scam signatures."
+            rationale = "On-device AI detected urgent fraud / phishing scam cues (OTP / Electricity / Impersonation)."
             spoofProb = 0.95
         } else if (text.contains("warranty") || text.contains("free cruise") || text.contains("lower your interest") || text.contains("press 1")) {
             verdict = "REJECT"
@@ -95,14 +96,16 @@ object OnDeviceLlmEngine {
             category = "ROBOCALL"
             rationale = "On-device AI detected automated telemarketing / warranty robocall pattern."
             spoofProb = 0.80
-        } else if (text.contains("delivery") || text.contains("amazon") || text.contains("courier") || text.contains("package")) {
+        } else if (text.contains("delivery") || text.contains("amazon") || text.contains("courier") || text.contains("package") ||
+            text.contains("zomato") || text.contains("swiggy") || text.contains("zepto") || text.contains("blinkit") || text.contains("parcel") || text.contains("gate")) {
             verdict = "ALLOW"
             riskScore = 8
             riskLevel = "SAFE"
             category = "DELIVERY_SERVICE"
             rationale = "On-device AI classified legitimate courier/logistics communication."
             spoofProb = 0.02
-        } else if (text.contains("doctor") || text.contains("hospital") || text.contains("clinic") || text.contains("appointment")) {
+        } else if (text.contains("doctor") || text.contains("hospital") || text.contains("clinic") || text.contains("appointment") ||
+            text.contains("डॉक्टर") || text.contains("अस्पताल") || text.contains("अपॉइंटमेंट")) {
             verdict = "ALLOW"
             riskScore = 5
             riskLevel = "SAFE"

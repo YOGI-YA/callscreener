@@ -67,6 +67,34 @@ describe('FastRulesEngine', () => {
     expect(result?.riskScore).toBeGreaterThanOrEqual(95);
   });
 
+  it('detects Hindi/Hinglish electricity bill and OTP scams via fast rules', () => {
+    const bijliResult = FastRulesEngine.evaluate(
+      {
+        phoneNumber: '+91-98765-43210',
+        callerName: 'Power Dept',
+        simulatedAudioTranscript: 'Aapka bijli bill update nahi hua power cut ho jayega.'
+      },
+      startTime
+    );
+
+    expect(bijliResult).not.toBeNull();
+    expect(bijliResult?.verdict).toBe('REJECT');
+    expect(bijliResult?.category).toBe('PHISHING_SCAM');
+
+    const otpResult = FastRulesEngine.evaluate(
+      {
+        phoneNumber: '+91-88888-77777',
+        callerName: 'Bank Helpdesk',
+        simulatedAudioTranscript: 'Sir aapke phone pe 6 digit OTP share karein KYC update ke liye.'
+      },
+      startTime
+    );
+
+    expect(otpResult).not.toBeNull();
+    expect(otpResult?.verdict).toBe('REJECT');
+    expect(otpResult?.category).toBe('PHISHING_SCAM');
+  });
+
   it('supports dynamically adding and removing custom whitelist rules', () => {
     const customRule = FastRulesEngine.addRule({
       type: 'WHITELIST',

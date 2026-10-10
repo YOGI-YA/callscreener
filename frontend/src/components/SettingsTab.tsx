@@ -90,6 +90,52 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
         </button>
       </div>
 
+      {/* Language & Voice Assistant Settings */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: '1.1rem' }}>🌐</span>
+          <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Screener Language &amp; Accent</span>
+        </div>
+
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+          Select the language your AI Assistant uses to interview callers and transcribe live conversations.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          {[
+            { id: 'EN', label: 'English', sub: 'Standard AI' },
+            { id: 'HI', label: 'हिंदी (Hindi)', sub: 'शुद्ध हिंदी' },
+            { id: 'HINGLISH', label: 'Hinglish', sub: 'Hindi + English' }
+          ].map((lang) => {
+            const isSelected = (localStorage.getItem('aegis_screener_language') || 'EN') === lang.id;
+            return (
+              <button
+                key={lang.id}
+                onClick={() => {
+                  localStorage.setItem('aegis_screener_language', lang.id);
+                  onRefreshRole();
+                }}
+                className="btn-secondary"
+                style={{
+                  padding: '10px 6px',
+                  flexDirection: 'column',
+                  gap: 2,
+                  borderColor: isSelected ? 'var(--accent-glow)' : 'var(--border-subtle)',
+                  background: isSelected ? 'rgba(99, 102, 241, 0.18)' : 'rgba(255, 255, 255, 0.04)'
+                }}
+              >
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: isSelected ? '#fff' : 'var(--text-primary)' }}>
+                  {lang.label}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                  {lang.sub}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Backend API Configuration */}
       <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

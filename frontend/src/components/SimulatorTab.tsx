@@ -18,8 +18,76 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({ onSimulateCall, isLo
 
   const presets = [
     {
+      id: 'bijli-scam',
+      title: '⚡ Electricity Bill Scam (Hinglish)',
+      badge: 'Critical Phishing',
+      icon: ShieldX,
+      color: 'var(--color-danger)',
+      data: {
+        phoneNumber: '+91 98765 43210',
+        callerName: 'State Electricity Board',
+        location: 'New Delhi, India',
+        carrier: 'Jio Telecom',
+        simulatedAudioTranscript: 'Aapka electricity power cut hoga aaj raat 9:30 baje kyunki pichle mahine ka bill update nahi hua. Turant is number pe call karein.',
+        callerIntent: 'Urgent utility disconnection phishing',
+        contactExistsInAddressBook: false,
+        callPresentationMode: 'ALLOWED' as const
+      }
+    },
+    {
+      id: 'bank-kyc-scam',
+      title: '💳 Bank KYC / OTP Fraud (Hinglish)',
+      badge: 'Critical Fraud',
+      icon: ShieldAlert,
+      color: 'var(--color-danger)',
+      data: {
+        phoneNumber: '+91 80011 22334',
+        callerName: 'SBI Verification Officer',
+        location: 'Mumbai, India',
+        carrier: 'Airtel',
+        simulatedAudioTranscript: 'Sir, aapka bank account aur debit card block ho jayega. KYC update karne ke liye aapke phone par 6 digit OTP aaya hai, turant share karein.',
+        callerIntent: 'Banking credential & OTP harvesting',
+        contactExistsInAddressBook: false,
+        callPresentationMode: 'ALLOWED' as const
+      }
+    },
+    {
+      id: 'zomato-delivery',
+      title: '🍔 Zomato / Swiggy Delivery (Hinglish)',
+      badge: 'Safe Food Delivery',
+      icon: CheckCircle,
+      color: 'var(--color-safe)',
+      data: {
+        phoneNumber: '+91 98111 22233',
+        callerName: 'Zomato Delivery Partner',
+        location: 'Bengaluru, India',
+        carrier: 'Vodafone Idea',
+        simulatedAudioTranscript: 'Bhaiya, main Zomato se food parcel leke aapke building gate ke paas khada hoon. Guard entry nahi de raha, please permit kar dijiye.',
+        callerIntent: 'Food delivery gate entry',
+        contactExistsInAddressBook: false,
+        callPresentationMode: 'ALLOWED' as const
+      }
+    },
+    {
+      id: 'hindi-doctor',
+      title: '🏥 Clinic Doctor Appointment (Hindi)',
+      badge: 'Safe Medical',
+      icon: UserCheck,
+      color: 'var(--color-safe)',
+      data: {
+        phoneNumber: '+91 11 2659 8700',
+        callerName: 'Apollo Hospitals Reception',
+        location: 'New Delhi, India',
+        carrier: 'BSNL',
+        simulatedAudioTranscript: 'नमस्ते, अपोलो हॉस्पिटल से कॉल है। कल सुबह 10:30 बजे डॉक्टर वर्मा के साथ आपका चेकअप अपॉइंटमेंट कन्फर्म करना था।',
+        callerIntent: 'Medical checkup schedule verification',
+        contactExistsInAddressBook: true,
+        callPresentationMode: 'ALLOWED' as const
+      }
+    },
+    {
       id: 'irs-scam',
-      title: 'IRS Arrest Warrant Scam',
+      title: '🚨 IRS Arrest Warrant Scam (English)',
       badge: 'Critical Phishing',
       icon: ShieldX,
       color: 'var(--color-danger)',
@@ -35,25 +103,8 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({ onSimulateCall, isLo
       }
     },
     {
-      id: 'auto-warranty',
-      title: 'Auto Warranty Robocall',
-      badge: 'Spam Bot',
-      icon: Flame,
-      color: 'var(--color-danger)',
-      data: {
-        phoneNumber: '+1 (888) 555-0199',
-        callerName: 'Vehicle Protection Center',
-        location: 'Toll-Free USA',
-        carrier: 'Cloud Telecom',
-        simulatedAudioTranscript: 'We have been trying to reach you regarding your car warranty expired notice. Press 1 now to speak to a specialist.',
-        callerIntent: 'Robocall lead generator',
-        contactExistsInAddressBook: false,
-        callPresentationMode: 'ALLOWED' as const
-      }
-    },
-    {
       id: 'amazon-delivery',
-      title: 'Amazon Delivery Courier',
+      title: '📦 Amazon Courier Delivery (English)',
       badge: 'Safe Courier',
       icon: CheckCircle,
       color: 'var(--color-safe)',
@@ -64,40 +115,6 @@ export const SimulatorTab: React.FC<SimulatorTabProps> = ({ onSimulateCall, isLo
         carrier: 'T-Mobile',
         simulatedAudioTranscript: 'Hi, this is your Amazon driver at the front gate with your package delivery. Could you buzz me in?',
         callerIntent: 'Delivery gate access',
-        contactExistsInAddressBook: false,
-        callPresentationMode: 'ALLOWED' as const
-      }
-    },
-    {
-      id: 'doctor-clinic',
-      title: 'Doctor Appointment Reminder',
-      badge: 'Safe Medical',
-      icon: UserCheck,
-      color: 'var(--color-safe)',
-      data: {
-        phoneNumber: '+1 (650) 555-3000',
-        callerName: 'Stanford Health Care',
-        location: 'Palo Alto, CA',
-        carrier: 'AT&T',
-        simulatedAudioTranscript: 'Hello, calling from Stanford Health to confirm your scheduled cardiology consultation tomorrow at 10 AM.',
-        callerIntent: 'Medical appointment',
-        contactExistsInAddressBook: true,
-        callPresentationMode: 'ALLOWED' as const
-      }
-    },
-    {
-      id: 'toll-fraud',
-      title: 'Premium 1-900 Toll Scam',
-      badge: 'Local Fast Rule Block',
-      icon: ShieldAlert,
-      color: 'var(--color-danger)',
-      data: {
-        phoneNumber: '+1 (900) 555-0188',
-        callerName: 'Live Chat Network',
-        location: 'Toll Premium Line',
-        carrier: 'Unknown',
-        simulatedAudioTranscript: 'You have won a free vacation cruise. Stay on the line to claim your prize voucher.',
-        callerIntent: 'Toll charge fraud',
         contactExistsInAddressBook: false,
         callPresentationMode: 'ALLOWED' as const
       }

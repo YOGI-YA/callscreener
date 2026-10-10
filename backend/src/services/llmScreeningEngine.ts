@@ -57,6 +57,7 @@ export class LLMScreeningEngine {
   private static async callOllamaApi(payload: IncomingCallPayload, startTime: number): Promise<ScreeningResult> {
     const prompt = `You are a real-time telecom security AI screener on an Android smartphone.
 Analyze the incoming call details and return a strict JSON assessment.
+Supports English, Hindi (हिंदी), and Hinglish transcripts. Detect phishing scams (e.g. Bijli bill cut, Bank KYC/OTP theft, KBC lottery, IRS/police impersonation) vs legitimate delivery/medical/work calls.
 
 CALL DETAILS:
 - Phone Number: ${payload.phoneNumber}
@@ -146,6 +147,7 @@ OUTPUT FORMAT (Respond with JSON ONLY):
   private static async callGeminiApi(payload: IncomingCallPayload, startTime: number): Promise<ScreeningResult> {
     const prompt = `You are a real-time telecom security AI screener on an Android smartphone.
 Analyze the incoming call details and return a strict JSON assessment.
+Supports English, Hindi (हिंदी), and Hinglish transcripts. Detect phishing scams (e.g. Bijli bill cut, Bank KYC/OTP theft, KBC lottery, IRS/police impersonation) vs legitimate delivery/medical/work calls.
 
 CALL DETAILS:
 - Phone Number: ${payload.phoneNumber}
@@ -247,13 +249,29 @@ OUTPUT FORMAT (Respond with JSON ONLY):
     let rationale = 'No elevated fraud signals detected. Call allowed.';
     let spoofProb = 0.05;
 
-    // Check scam/telemarketing triggers
-    if (text.includes('irs') || text.includes('warrant') || text.includes('arrest') || text.includes('social security') || text.includes('gift card') || text.includes('bitcoin')) {
+    // Check scam/telemarketing triggers (English, Hindi, Hinglish)
+    if (
+      text.includes('irs') ||
+      text.includes('warrant') ||
+      text.includes('arrest') ||
+      text.includes('social security') ||
+      text.includes('gift card') ||
+      text.includes('bitcoin') ||
+      text.includes('bijli') ||
+      text.includes('power cut') ||
+      text.includes('otp') ||
+      text.includes('kyc') ||
+      text.includes('block ho jayega') ||
+      text.includes('lottery') ||
+      text.includes('kbc') ||
+      text.includes('बिजली') ||
+      text.includes('ओटीपी')
+    ) {
       verdict = 'REJECT';
       riskScore = 96;
       riskLevel = 'CRITICAL_SPAM';
       category = 'PHISHING_SCAM';
-      rationale = 'AI detected high-urgency government impersonation / financial fraud cues.';
+      rationale = 'AI detected high-urgency fraud / phishing cues (Electricity disconnection / OTP / Government impersonation).';
       spoofProb = 0.94;
     } else if (text.includes('warranty') || text.includes('insurance') || text.includes('rate reduction') || text.includes('free vacation') || text.includes('survey')) {
       verdict = 'REJECT';
@@ -262,14 +280,38 @@ OUTPUT FORMAT (Respond with JSON ONLY):
       category = 'ROBOCALL';
       rationale = 'Detected automated telemarketing / expired warranty solicitation.';
       spoofProb = 0.75;
-    } else if (text.includes('delivery') || text.includes('package') || text.includes('amazon') || text.includes('fedex') || text.includes('courier') || text.includes('doordash')) {
+    } else if (
+      text.includes('delivery') ||
+      text.includes('package') ||
+      text.includes('amazon') ||
+      text.includes('fedex') ||
+      text.includes('courier') ||
+      text.includes('doordash') ||
+      text.includes('zomato') ||
+      text.includes('swiggy') ||
+      text.includes('zepto') ||
+      text.includes('blinkit') ||
+      text.includes('parcel') ||
+      text.includes('gate') ||
+      text.includes('bhaiya')
+    ) {
       verdict = 'ALLOW';
       riskScore = 8;
       riskLevel = 'SAFE';
       category = 'DELIVERY_SERVICE';
-      rationale = 'Recognized legitimate logistics/courier delivery communication.';
+      rationale = 'Recognized legitimate logistics / food courier delivery communication.';
       spoofProb = 0.02;
-    } else if (text.includes('doctor') || text.includes('appointment') || text.includes('clinic') || text.includes('prescription') || text.includes('hospital')) {
+    } else if (
+      text.includes('doctor') ||
+      text.includes('appointment') ||
+      text.includes('clinic') ||
+      text.includes('prescription') ||
+      text.includes('hospital') ||
+      text.includes('डॉक्टर') ||
+      text.includes('अस्पताल') ||
+      text.includes('अपॉइंटमेंट') ||
+      text.includes('apollo')
+    ) {
       verdict = 'ALLOW';
       riskScore = 4;
       riskLevel = 'SAFE';
