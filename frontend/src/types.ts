@@ -91,7 +91,7 @@ export interface CallScreeningStats {
   spamBlockRate: number;
 }
 
-export type LanguagePreference = 'EN' | 'HI' | 'HINGLISH';
+export type LanguagePreference = 'AUTO' | 'EN' | 'HI' | 'HINGLISH';
 
 export interface AppSettings {
   backendApiUrl: string;

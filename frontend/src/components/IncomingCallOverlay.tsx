@@ -19,13 +19,38 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
   onDismiss,
   onOverrideAction
 }) => {
-  const savedLang = (localStorage.getItem('aegis_screener_language') || 'EN') as 'EN' | 'HI' | 'HINGLISH';
+  const savedLang = (localStorage.getItem('aegis_screener_language') || 'AUTO') as 'AUTO' | 'EN' | 'HI' | 'HINGLISH';
+
+  // Helper to detect caller's spoken language on the fly
+  const detectLanguage = (text: string): 'HI' | 'HINGLISH' | 'EN' => {
+    if (!text) return 'EN';
+    if (/[\u0900-\u097F]/.test(text)) {
+      return 'HI';
+    }
+    const lower = text.toLowerCase();
+    const hinglishKeywords = [
+      'aapka', 'aapke', 'karein', 'karna', 'karo', 'hai', 'hain', 'bhaiya', 'hoon', 'kripya',
+      'raha', 'rahi', 'rahe', 'pe', 'mein', 'nahi', 'hua', 'turant', 'namaste', 'bijli',
+      'batao', 'batayein', 'dein', 'leke', 'khada', 'dijiye', 'gayi', 'hoga', 'band'
+    ];
+    for (const word of hinglishKeywords) {
+      if (new RegExp(`\\b${word}\\b`, 'i').test(lower)) {
+        return 'HINGLISH';
+      }
+    }
+    return 'EN';
+  };
+
+  const detectedCallerLang = detectLanguage(incomingCall.simulatedAudioTranscript || '');
+  const activeLang = savedLang === 'AUTO' ? detectedCallerLang : savedLang;
 
   const defaultGreeting =
     savedLang === 'HI'
       ? 'नमस्ते, मैं प्राप्तकर्ता के लिए कॉल स्क्रीन कर रहा हूँ। कृपया अपना नाम और कॉल करने का कारण बताएं।'
       : savedLang === 'HINGLISH'
-      ? 'Namaste! Main recipient ke liye call screen kar raha hoon. Please apna naam aur call karne ka reason batayein.'
+      ? 'Namaste! Main recipient ke liye call screen kar raha hoon. Please apna naam aur call reason batayein.'
+      : savedLang === 'AUTO'
+      ? "Hello! I'm screening this call. नमस्ते, कृपया अपना नाम और कारण बताएं।"
       : "Hi, I'm screening calls for the recipient. Please state your name and the reason for your call.";
 
   const [dialogue, setDialogue] = useState<DialogueTurn[]>([
@@ -118,16 +143,15 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
 
   const getSmartChips = () => {
     const text = (incomingCall.simulatedAudioTranscript || '').toLowerCase();
-    const isHindiOrHinglish = savedLang === 'HI' || savedLang === 'HINGLISH' || text.includes('bijli') || text.includes('otp') || text.includes('zomato') || text.includes('bhaiya') || text.includes('नमस्ते') || text.includes('अपॉइंटमेंट');
 
-    if (savedLang === 'HI') {
-      if (text.includes('irs') || text.includes('warrant') || text.includes('tax') || text.includes('bijli') || text.includes('otp') || text.includes('kyc') || text.includes('बिजली') || text.includes('ओटीपी')) {
+    if (activeLang === 'HI') {
+      if (text.includes('irs') || text.includes('warrant') || text.includes('tax') || text.includes('bijli') || text.includes('otp') || text.includes('kyc') || text.includes('बिजली') || text.includes('ओटीपी') || text.includes('बिल')) {
         return [
           { label: 'आईडी और विभाग पूछें', prompt: 'क्या आप अपनी आधिकारिक आईडी और विभाग की जानकारी दे सकते हैं?', reply: 'आपको अभी पेमेंट करना होगा वरना तुरंत बिजली काट दी जाएगी।' },
           { label: 'फ्रॉड मार्क करके काटें', prompt: 'यह कॉल संदिग्ध फ्रॉड पाई गई है। डिस्कनेक्ट किया जा रहा है।', reply: 'रुको— [कॉल समाप्त]' },
           { label: 'शाखा में मिलने को कहें', prompt: 'हम सीधे आधिकारिक शाखा में जाकर संपर्क करेंगे।', reply: 'शाखा में जाने का समय नहीं है, अभी तुरंत करना होगा।' }
         ];
-      } else if (text.includes('delivery') || text.includes('package') || text.includes('zomato') || text.includes('swiggy') || text.includes('gate') || text.includes('पार्सल')) {
+      } else if (text.includes('delivery') || text.includes('package') || text.includes('zomato') || text.includes('swiggy') || text.includes('gate') || text.includes('पार्सल') || text.includes('खाना')) {
         return [
           { label: 'दरवाजे पर छोड़ दें', prompt: 'क्या आप पार्सल मुख्य दरवाजे के पास छोड़ सकते हैं?', reply: 'हाँजी, मैंने पार्सल मुख्य दरवाजे पर रख दिया है।' },
           { label: 'गेट गार्ड को देने कहें', prompt: 'कृपया पार्सल सोसाइटी के मेन गेट सुरक्षा गार्ड के पास जमा करा दें।', reply: 'ठीक है, मैंने गार्ड रूम में एंट्री करवा दी है।' },
@@ -140,14 +164,14 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
           { label: 'मैसेज नोट करें', prompt: 'प्राप्तकर्ता अभी व्यस्त हैं। क्या आप कोई संदेश छोड़ना चाहेंगे?', reply: 'कृपया उन्हें ईमेल चेक करने के लिए बोल दीजिएगा।' }
         ];
       }
-    } else if (savedLang === 'HINGLISH') {
-      if (text.includes('irs') || text.includes('warrant') || text.includes('tax') || text.includes('bijli') || text.includes('otp') || text.includes('kyc')) {
+    } else if (activeLang === 'HINGLISH') {
+      if (text.includes('irs') || text.includes('warrant') || text.includes('tax') || text.includes('bijli') || text.includes('otp') || text.includes('kyc') || text.includes('block')) {
         return [
           { label: 'Official ID maango', prompt: 'Kya aap apna official employee ID aur case verification share kar sakte hain?', reply: 'Aapko abhi turant resolve karna hoga warna immediate action hoga.' },
           { label: 'Spam bolke disconnect karo', prompt: 'Ye call unauthorized scam identify hui hai. Hum disconnect kar rahe hain.', reply: 'Arey suno— [Call Ended]' },
           { label: 'Branch visit bolna', prompt: 'Hum direct official branch visit karke verify kar lenge.', reply: 'Branch mein ye solve nahi hoga, phone pe hi OTP batana hoga.' }
         ];
-      } else if (text.includes('delivery') || text.includes('package') || text.includes('zomato') || text.includes('swiggy') || text.includes('gate') || text.includes('bhaiya')) {
+      } else if (text.includes('delivery') || text.includes('package') || text.includes('zomato') || text.includes('swiggy') || text.includes('gate') || text.includes('bhaiya') || text.includes('parcel')) {
         return [
           { label: 'Door pe chhod do', prompt: 'Bhaiya, aap parcel flat ke door ke paas chhod dijiye please.', reply: 'Theek hai bhaiya, door mat ke paas rakh diya hai. Thank you!' },
           { label: 'Gate guard ko dedo', prompt: 'Aap security guard ke paas delivery submit kar dijiye.', reply: 'Okay sir, main security guard ko hand over kar raha hoon.' },
@@ -209,7 +233,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       </div>
 
       {/* Caller Header Card */}
-      <div style={{ textAlign: 'center', margin: '10px 0' }}>
+      <div style={{ textAlign: 'center', margin: '8px 0 6px' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{incomingCall.callerName || 'Unknown Caller'}</h2>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.92rem', color: 'var(--accent-glow)', fontWeight: 600 }}>
           {incomingCall.phoneNumber}
@@ -219,6 +243,9 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
             📍 {incomingCall.location} {incomingCall.carrier ? `• ${incomingCall.carrier}` : ''}
           </div>
         )}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 5, padding: '2px 8px', borderRadius: 'var(--radius-full)', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', fontSize: '0.68rem', color: '#a5b4fc', fontWeight: 600 }}>
+          <span>🌐 Auto-Mirroring: {activeLang === 'HI' ? 'हिंदी (Hindi)' : activeLang === 'HINGLISH' ? 'Hinglish (Hindi + English)' : 'English'}</span>
+        </div>
       </div>
 
       {/* Live Intent & Risk Analysis Banner */}

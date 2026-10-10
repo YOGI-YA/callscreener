@@ -101,13 +101,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
           Select the language your AI Assistant uses to interview callers and transcribe live conversations.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {[
+            { id: 'AUTO', label: '⚡ Auto-Detect', sub: 'Mirrors Caller (Recommended)' },
             { id: 'EN', label: 'English', sub: 'Standard AI' },
             { id: 'HI', label: 'हिंदी (Hindi)', sub: 'शुद्ध हिंदी' },
             { id: 'HINGLISH', label: 'Hinglish', sub: 'Hindi + English' }
           ].map((lang) => {
-            const isSelected = (localStorage.getItem('aegis_screener_language') || 'EN') === lang.id;
+            const isSelected = (localStorage.getItem('aegis_screener_language') || 'AUTO') === lang.id;
             return (
               <button
                 key={lang.id}
@@ -117,7 +118,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
                 }}
                 className="btn-secondary"
                 style={{
-                  padding: '10px 6px',
+                  padding: '10px 8px',
                   flexDirection: 'column',
                   gap: 2,
                   borderColor: isSelected ? 'var(--accent-glow)' : 'var(--border-subtle)',
