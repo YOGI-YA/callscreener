@@ -37,12 +37,107 @@ export class LLMScreeningEngine {
    */
   private static async performLLMAnalysis(payload: IncomingCallPayload, startTime: number): Promise<ScreeningResult> {
     const isTest = process.env.NODE_ENV === 'test';
-    if (config.geminiApiKey && config.geminiApiKey.length > 10 && !isTest) {
+    if (isTest) {
+      return await this.simulateIntelligentAnalysis(payload, startTime);
+    }
+
+    if (config.llmProvider === 'ollama' || process.env.OLLAMA_BASE_URL) {
+      return await this.callOllamaApi(payload, startTime);
+    } else if (config.geminiApiKey && config.geminiApiKey.length > 10) {
       return await this.callGeminiApi(payload, startTime);
     } else {
       // Offline / Intelligent Mock Engine for development & testing without API key
       return await this.simulateIntelligentAnalysis(payload, startTime);
     }
+  }
+
+  /**
+   * Calls Local Physical LLM via Ollama API (e.g. Llama 3.2 1B, Qwen 2.5)
+   */
+  private static async callOllamaApi(payload: IncomingCallPayload, startTime: number): Promise<ScreeningResult> {
+    const prompt = `You are a real-time telecom security AI screener on an Android smartphone.
+Analyze the incoming call details and return a strict JSON assessment.
+
+CALL DETAILS:
+- Phone Number: ${payload.phoneNumber}
+- Caller ID Name: ${payload.callerName || 'Unknown'}
+- Location: ${payload.location || 'Unknown'}
+- Carrier: ${payload.carrier || 'Unknown'}
+- Presentation: ${payload.callPresentationMode || 'ALLOWED'}
+- Caller Intent/Opening Transcript: "${payload.simulatedAudioTranscript || payload.callerIntent || 'No transcript provided'}"
+
+OUTPUT FORMAT (Respond with JSON ONLY):
+{
+  "verdict": "ALLOW" | "SILENCE" | "REJECT",
+  "riskScore": number (0 to 100),
+  "riskLevel": "SAFE" | "LOW" | "SUSPICIOUS" | "CRITICAL_SPAM",
+  "category": "ROBOCALL" | "PHISHING_SCAM" | "TELEMARKETING" | "DEBT_COLLECTOR" | "DELIVERY_SERVICE" | "MEDICAL_APPOINTMENT" | "VERIFIED_CONTACT" | "UNKNOWN",
+  "confidence": number (0.0 to 1.0),
+  "rationale": "Clear concise 1-2 sentence explanation for the user",
+  "detectedSpoofProbability": number (0.0 to 1.0)
+}`;
+
+    const url = `${config.ollamaBaseUrl.replace(/\/+$/, '')}/api/generate`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: config.ollamaModel,
+        prompt: prompt,
+        format: 'json',
+        stream: false,
+        options: {
+          temperature: 0.1
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ollama local API returned status ${response.status}`);
+    }
+
+    const data: any = await response.json();
+    const rawText = data?.response;
+    if (!rawText) {
+      throw new Error('Empty response from local Ollama model');
+    }
+
+    const parsed = JSON.parse(rawText);
+    const latencyMs = Math.max(1, Date.now() - startTime);
+
+    const verdict: ScreeningVerdict = parsed.verdict || 'ALLOW';
+    const riskScore = typeof parsed.riskScore === 'number' ? parsed.riskScore : 50;
+    const riskLevel: RiskLevel = parsed.riskLevel || (riskScore > 75 ? 'CRITICAL_SPAM' : riskScore > 40 ? 'SUSPICIOUS' : 'SAFE');
+    const category: CallerCategory = parsed.category || 'UNKNOWN';
+    const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0.9;
+    const rationale = parsed.rationale || 'Physical local LLM evaluation complete.';
+
+    return {
+      id: `scr-${uuidv4().substring(0, 12)}`,
+      phoneNumber: payload.phoneNumber,
+      callerName: payload.callerName || 'Unknown Caller',
+      verdict,
+      riskScore,
+      riskLevel,
+      category,
+      confidence,
+      rationale,
+      engine: 'LLM_AI',
+      latencyMs,
+      timestamp: new Date().toISOString(),
+      suggestedActions: {
+        disallowCall: verdict === 'REJECT',
+        silenceCall: verdict === 'SILENCE',
+        rejectCall: verdict === 'REJECT',
+        skipCallLog: false,
+        skipNotification: verdict === 'REJECT'
+      },
+      metadata: {
+        spoofProbability: parsed.detectedSpoofProbability || 0,
+        llmModelUsed: `ollama/${config.ollamaModel}`
+      }
+    };
   }
 
   /**
