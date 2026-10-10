@@ -1,0 +1,37 @@
+{
+  "name": "ai-call-screener-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-Powered Android Call Screening Application",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
+    "test": "npm run test --workspace=backend && npm run test --workspace=frontend",
+    "lint": "npm run lint --workspace=backend && npm run lint --workspace=frontend",
+    "backend:dev": "npm run dev --workspace=backend",
+    "backend:build": "npm run build --workspace=backend",
+    "backend:test": "npm run test --workspace=backend",
+    "frontend:dev": "npm run dev --workspace=frontend",
+    "frontend:build": "npm run build --workspace=frontend",
+    "frontend:test": "npm run test --workspace=frontend",
+    "cap:sync": "npm run build --workspace=frontend && npx cap sync android"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "keywords": [
+    "android",
+    "call-screening",
+    "ai",
+    "gemini",
+    "telecom",
+    "capacitor",
+    "react"
+  ],
+  "author": "",
+  "license": "MIT"
+}
