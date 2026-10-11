@@ -44,6 +44,7 @@ export interface IncomingCallPayload {
   contactExistsInAddressBook?: boolean;
   callPresentationMode?: 'ALLOWED' | 'RESTRICTED' | 'UNKNOWN' | 'PAYPHONE';
   dialogueHistory?: DialogueTurn[];
+  isOutgoing?: boolean;
 }
 
 export interface ScreeningResult {

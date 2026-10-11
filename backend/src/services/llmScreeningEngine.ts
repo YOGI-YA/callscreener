@@ -369,4 +369,172 @@ OUTPUT FORMAT (Respond with JSON ONLY):
       }
     };
   }
+
+  /**
+   * Generates a real-time ChatGPT-style conversational turn response
+   * using the Free Gemini 2.0 / 1.5 Flash tier or local offline engine.
+   */
+  public static async generateConversationalTurn(params: {
+    phoneNumber: string;
+    callerName?: string;
+    callerUtterance: string;
+    dialogueHistory: { sender: 'AI_ASSISTANT' | 'CALLER'; text: string }[];
+    language?: 'AUTO' | 'EN' | 'HI' | 'HINGLISH';
+  }): Promise<{
+    aiSpeech: string;
+    intentCategory: string;
+    riskScore: number;
+    recommendedVerdict: 'ALLOW' | 'REJECT' | 'SILENCE';
+    suggestedSmartReplies: string[];
+  }> {
+    const historyText = params.dialogueHistory
+      .map((t) => `${t.sender === 'AI_ASSISTANT' ? 'AI Screener' : 'Caller'}: "${t.text}"`)
+      .join('\n');
+
+    const prompt = `You are "Aegis", an ultra-intelligent, polite, concise AI executive personal assistant screening a real phone call for Yogi.
+You are speaking directly to the CALLER on the telephone line right now.
+
+CALLER INFO:
+- Name: ${params.callerName || 'Unknown'}
+- Number: ${params.phoneNumber}
+- Conversation so far:
+${historyText || 'No prior turns.'}
+- Latest utterance from Caller: "${params.callerUtterance}"
+
+YOUR OBJECTIVE:
+Respond to the caller naturally, politely, and casually like a real human assistant.
+CRITICAL RULES:
+1. Speak concisely in 1 single sentence (under 18 words).
+2. If it is a delivery/courier (Swiggy, Zomato, Amazon, courier): acknowledge and ask them to leave it at the door or with the guard.
+3. If it is a friend, colleague, or family: say Yogi is momentarily busy and you will notify him to pick up right now.
+4. If it is a spammer, loan/credit card marketer, or scam (electricity bill, OTP, lottery): firmly and politely decline and end the call.
+5. If they just said hello or asked for Yogi: ask who is calling and what it is regarding.
+6. Language: Match caller language naturally. If Hindi (हिंदी), reply in Hindi. If Hinglish, reply in Hinglish. If English, reply in natural English.
+
+OUTPUT JSON ONLY:
+{
+  "aiSpeech": "The exact natural human-like sentence to speak out loud to the caller",
+  "intentCategory": "DELIVERY_SERVICE" | "PHISHING_SCAM" | "TELEMARKETING" | "VERIFIED_CONTACT" | "UNKNOWN",
+  "riskScore": number (0 to 100),
+  "recommendedVerdict": "ALLOW" | "REJECT",
+  "suggestedSmartReplies": ["3 quick one-tap actions for user"]
+}`;
+
+    if (config.geminiApiKey && config.geminiApiKey.length > 10) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.llmModel}:generateContent?key=${config.geminiApiKey}`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2000);
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.2,
+              responseMimeType: 'application/json'
+            }
+          })
+        });
+        clearTimeout(timeout);
+
+        if (response.ok) {
+          const data: any = await response.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            const parsed = JSON.parse(text);
+            return {
+              aiSpeech: parsed.aiSpeech || 'Understood, thank you.',
+              intentCategory: parsed.intentCategory || 'UNKNOWN',
+              riskScore: typeof parsed.riskScore === 'number' ? parsed.riskScore : 20,
+              recommendedVerdict: parsed.recommendedVerdict || 'ALLOW',
+              suggestedSmartReplies: Array.isArray(parsed.suggestedSmartReplies)
+                ? parsed.suggestedSmartReplies
+                : ['Ask for details', 'Leave at door', 'Hang up']
+            };
+          }
+        }
+      } catch (e) {
+        // Fall back to high-speed deterministic heuristic
+      }
+    }
+
+    // High-speed conversational heuristic fallback (<1ms)
+    return this.generateHeuristicConversationalTurn(params.callerUtterance, params.language);
+  }
+
+  private static generateHeuristicConversationalTurn(
+    utterance: string,
+    langPref?: string
+  ): {
+    aiSpeech: string;
+    intentCategory: string;
+    riskScore: number;
+    recommendedVerdict: 'ALLOW' | 'REJECT' | 'SILENCE';
+    suggestedSmartReplies: string[];
+  } {
+    const text = utterance.toLowerCase();
+    const isHindi = /[\u0900-\u097F]/.test(utterance) || langPref === 'HI';
+    const isHinglish = /aapka|bhaiya|karein|karna|bijli|swiggy|zomato|karo|nahi|turant/.test(text) || langPref === 'HINGLISH';
+
+    // 1. Phishing / Scam detection
+    if (text.includes('electricity') || text.includes('bijli') || text.includes('warrant') || text.includes('irs') || text.includes('otp') || text.includes('kyc') || text.includes('lottery') || text.includes('block your')) {
+      return {
+        aiSpeech: isHindi
+          ? 'यह कॉल संदिग्ध फ्रॉड पाई गई है। हम यह कॉल डिस्कनेक्ट कर रहे हैं।'
+          : isHinglish
+          ? 'Ye call scam suspicious mark hui hai. Disconnecting now.'
+          : 'This call has been identified as a suspected scam. Disconnecting now.',
+        intentCategory: 'PHISHING_SCAM',
+        riskScore: 95,
+        recommendedVerdict: 'REJECT',
+        suggestedSmartReplies: ['Report scam', 'Ask for ID', 'Hang up']
+      };
+    }
+
+    // 2. Delivery detection
+    if (text.includes('delivery') || text.includes('package') || text.includes('amazon') || text.includes('swiggy') || text.includes('zomato') || text.includes('fedex') || text.includes('gate') || text.includes('parcel')) {
+      return {
+        aiSpeech: isHindi
+          ? 'नमस्ते, कृपया पार्सल मेन दरवाजे के पास छोड़ दीजिए। धन्यवाद!'
+          : isHinglish
+          ? 'Bhaiya parcel flat ke main door ke paas chhod dijiye, thank you!'
+          : 'Hi! Please leave the package safely by the front door. Thank you!',
+        intentCategory: 'DELIVERY_SERVICE',
+        riskScore: 5,
+        recommendedVerdict: 'ALLOW',
+        suggestedSmartReplies: ['Leave at door', 'Give to guard', 'Take over']
+      };
+    }
+
+    // 3. Telemarketing / Loans / Insurance
+    if (text.includes('loan') || text.includes('credit card') || text.includes('offer') || text.includes('investment') || text.includes('insurance')) {
+      return {
+        aiSpeech: isHindi
+          ? 'हम किसी भी मार्केटिंग सेवा में रुचि नहीं रखते हैं। कृपया लिस्ट से नाम हटा दें।'
+          : isHinglish
+          ? 'Hum kisi marketing offer me interested nahi hain, thank you.'
+          : 'We are not interested in promotional offers at this time. Thank you, have a good day.',
+        intentCategory: 'TELEMARKETING',
+        riskScore: 80,
+        recommendedVerdict: 'REJECT',
+        suggestedSmartReplies: ['Not interested', 'Put on DND', 'Hang up']
+      };
+    }
+
+    // 4. General query / Unknown
+    return {
+      aiSpeech: isHindi
+        ? 'प्राप्तकर्ता अभी व्यस्त हैं। क्या आप अपना नाम और कॉल करने का कारण बता सकते हैं?'
+        : isHinglish
+        ? 'Yogi abhi busy hain. Please apna naam aur call ka reason bataiye?'
+        : 'The recipient is currently unavailable. Could you please state your name and what this is regarding?',
+      intentCategory: 'UNKNOWN',
+      riskScore: 25,
+      recommendedVerdict: 'ALLOW',
+      suggestedSmartReplies: ['Who is calling?', 'Call back later', 'Take over']
+    };
+  }
 }

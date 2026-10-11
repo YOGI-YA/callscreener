@@ -55,6 +55,39 @@ screeningRouter.post('/screen-call', async (req: Request, res: Response): Promis
 });
 
 /**
+ * POST /api/chat-turn
+ * Real-time ChatGPT-style conversational turn response endpoint
+ */
+screeningRouter.post('/chat-turn', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { phoneNumber, callerName, callerUtterance, dialogueHistory, language } = req.body;
+    if (!callerUtterance) {
+      res.status(400).json({ error: 'callerUtterance is required' });
+      return;
+    }
+
+    const turn = await LLMScreeningEngine.generateConversationalTurn({
+      phoneNumber: phoneNumber || 'Unknown',
+      callerName,
+      callerUtterance,
+      dialogueHistory: Array.isArray(dialogueHistory) ? dialogueHistory : [],
+      language
+    });
+
+    res.status(200).json({
+      success: true,
+      data: turn
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: 'Chat turn generation failed',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+/**
  * GET /api/rules
  * Fetch screening rules (used by Android client for offline synchronization)
  */

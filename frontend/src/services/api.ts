@@ -124,6 +124,83 @@ export class ApiService {
     return result;
   }
 
+  /**
+   * Real-time ChatGPT-style conversational turn generator (Zero-Cost Gemini Flash / Local Heuristic)
+   */
+  public static async generateChatTurn(params: {
+    phoneNumber: string;
+    callerName?: string;
+    callerUtterance: string;
+    dialogueHistory: { sender: 'AI_ASSISTANT' | 'CALLER'; text: string }[];
+    language?: 'AUTO' | 'EN' | 'HI' | 'HINGLISH';
+  }): Promise<{
+    aiSpeech: string;
+    intentCategory: string;
+    riskScore: number;
+    recommendedVerdict: 'ALLOW' | 'REJECT' | 'SILENCE';
+    suggestedSmartReplies: string[];
+  }> {
+    try {
+      if (this.getBaseUrl()) {
+        const response = await fetch(this.formatUrl('/api/chat-turn'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params)
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data) return data.data;
+        }
+      }
+    } catch {
+      // Local fallback below
+    }
+
+    const text = params.callerUtterance.toLowerCase();
+    const isHindi = params.language === 'HI' || /[\u0900-\u097F]/.test(params.callerUtterance);
+    const isHinglish = params.language === 'HINGLISH' || /aapka|bhaiya|karein|karna|bijli|swiggy|zomato|karo|nahi/.test(text);
+
+    if (text.includes('delivery') || text.includes('package') || text.includes('swiggy') || text.includes('zomato') || text.includes('amazon') || text.includes('gate') || text.includes('parcel')) {
+      return {
+        aiSpeech: isHindi
+          ? 'नमस्ते, कृपया पार्सल मेन दरवाजे के पास छोड़ दीजिए। धन्यवाद!'
+          : isHinglish
+          ? 'Bhaiya parcel flat ke main door ke paas chhod dijiye, thank you!'
+          : 'Hi! Please leave the package safely by the front door. Thank you!',
+        intentCategory: 'DELIVERY_SERVICE',
+        riskScore: 5,
+        recommendedVerdict: 'ALLOW',
+        suggestedSmartReplies: ['Leave at door', 'Give to guard', 'Take over']
+      };
+    }
+
+    if (text.includes('electricity') || text.includes('bijli') || text.includes('irs') || text.includes('otp') || text.includes('kyc') || text.includes('warrant')) {
+      return {
+        aiSpeech: isHindi
+          ? 'यह कॉल संदिग्ध फ्रॉड पाई गई है। डिस्कनेक्ट किया जा रहा है।'
+          : isHinglish
+          ? 'Ye call unauthorized scam mark hui hai. Disconnecting now.'
+          : 'This call has been marked as unauthorized scam. Disconnecting now.',
+        intentCategory: 'PHISHING_SCAM',
+        riskScore: 95,
+        recommendedVerdict: 'REJECT',
+        suggestedSmartReplies: ['Report scam', 'Ask for ID', 'Hang up']
+      };
+    }
+
+    return {
+      aiSpeech: isHindi
+        ? 'प्राप्तकर्ता अभी व्यस्त हैं। क्या आप अपना नाम और कॉल का कारण बता सकते हैं?'
+        : isHinglish
+        ? 'Yogi abhi busy hain. Please apna naam aur call ka reason bataiye?'
+        : 'The recipient is currently unavailable. Could you please state your name and what this is regarding?',
+      intentCategory: 'UNKNOWN',
+      riskScore: 25,
+      recommendedVerdict: 'ALLOW',
+      suggestedSmartReplies: ['Who is calling?', 'Call back later', 'Take over']
+    };
+  }
+
   private static evaluateOnDevice(payload: IncomingCallPayload): ScreeningResult {
     const start = Date.now();
     const text = `${payload.callerName || ''} ${payload.callerIntent || ''} ${payload.simulatedAudioTranscript || ''}`.toLowerCase();

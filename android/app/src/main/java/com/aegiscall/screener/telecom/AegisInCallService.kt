@@ -16,6 +16,9 @@ class AegisInCallService : InCallService() {
         private const val TAG = "AegisInCallService"
 
         @Volatile
+        var serviceInstance: AegisInCallService? = null
+
+        @Volatile
         var activeCall: Call? = null
 
         @Volatile
@@ -38,6 +41,13 @@ class AegisInCallService : InCallService() {
             // Answer the call programmatically to screen it
             activeCall?.answer(VideoProfile.STATE_AUDIO_ONLY)
 
+            // Route telecom audio so remote caller on the line hears the AI voice
+            try {
+                serviceInstance?.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not set speaker route for screening: ${e.message}")
+            }
+
             // Start AI voice conversation (TTS + STT)
             AiVoiceScreeningEngine.startScreeningConversation(appContext, language)
         }
@@ -51,12 +61,69 @@ class AegisInCallService : InCallService() {
         fun pickupCall() {
             isScreeningActive = false
             AiVoiceScreeningEngine.stop()
+            // Reset to earpiece for private ear conversation when user takes over
+            try {
+                serviceInstance?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not reset audio route to earpiece: ${e.message}")
+            }
             CallScreeningPlugin.broadcastCallPickedUp()
+        }
+
+        fun setMuted(muted: Boolean) {
+            try {
+                serviceInstance?.setMuted(muted)
+                CallScreeningPlugin.broadcastCallAudioState(muted = muted, speakerOn = serviceInstance?.callAudioState?.route == CallAudioState.ROUTE_SPEAKER)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to set mute: ${e.message}")
+            }
+        }
+
+        fun setSpeakerphone(speakerOn: Boolean) {
+            try {
+                if (speakerOn) {
+                    serviceInstance?.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                } else {
+                    serviceInstance?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
+                }
+                CallScreeningPlugin.broadcastCallAudioState(muted = serviceInstance?.callAudioState?.isMuted ?: false, speakerOn = speakerOn)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to set speaker: ${e.message}")
+            }
+        }
+
+        fun playDtmfTone(digit: Char) {
+            try {
+                activeCall?.playDtmfTone(digit)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to play DTMF: ${e.message}")
+            }
+        }
+
+        fun stopDtmfTone() {
+            try {
+                activeCall?.stopDtmfTone()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to stop DTMF: ${e.message}")
+            }
+        }
+
+        fun holdCall(hold: Boolean) {
+            try {
+                if (hold) {
+                    activeCall?.hold()
+                } else {
+                    activeCall?.unhold()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to hold/unhold call: ${e.message}")
+            }
         }
     }
 
     override fun onCreate() {
         super.onCreate()
+        serviceInstance = this
         appContext = applicationContext
         AiVoiceScreeningEngine.initialize(applicationContext)
     }
@@ -107,6 +174,23 @@ class AegisInCallService : InCallService() {
         CallScreeningPlugin.broadcastCallEnded()
         if (activeCall == call) {
             activeCall = null
+        }
+    }
+
+    override fun onCallAudioStateChanged(audioState: CallAudioState?) {
+        super.onCallAudioStateChanged(audioState)
+        audioState?.let {
+            CallScreeningPlugin.broadcastCallAudioState(
+                muted = it.isMuted,
+                speakerOn = it.route == CallAudioState.ROUTE_SPEAKER
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (serviceInstance == this) {
+            serviceInstance = null
         }
     }
 

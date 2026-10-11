@@ -125,23 +125,16 @@ export const App: React.FC = () => {
     }
   };
 
-  // Trigger simulated incoming call (from Dashboard simulator)
-  const handleSimulateCall = async (payload: IncomingCallPayload) => {
+  // Trigger outgoing call screen from Dialer tab
+  const handleOutgoingCall = (phoneNumber: string, callerName: string) => {
+    const payload: IncomingCallPayload = {
+      phoneNumber,
+      callerName: callerName || phoneNumber,
+      callPresentationMode: 'ALLOWED',
+      isOutgoing: true
+    };
     setIncomingCall(payload);
     setActiveResult(null);
-    setIsScreening(true);
-
-    try {
-      const result = await ApiService.screenCall(payload);
-      setActiveResult(result);
-      // Update local logs and stats immediately
-      setLogs((prev) => [result, ...prev]);
-      ApiService.getStats().then(setStats).catch(() => {});
-    } catch (error: any) {
-      console.error('Screening simulation failed:', error);
-    } finally {
-      setIsScreening(false);
-    }
   };
 
   // Manual override inside incoming call overlay
@@ -253,6 +246,7 @@ export const App: React.FC = () => {
           {activeTab === 'dialer' && (
             <DialerTab
               onIncomingCallPayload={handleDialerAiScreen}
+              onOutgoingCall={handleOutgoingCall}
             />
           )}
 

@@ -160,7 +160,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         </div>
       </div>
 
-      {/* Primary Simulator CTA */}
+      {/* Primary Phone Dialer Action Card */}
       <div
         className="glass-card"
         style={{
@@ -174,14 +174,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       >
         <div>
           <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff', marginBottom: 2 }}>
-            Interactive Call Simulator
+            Native Phone &amp; AI Screener
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            Test IRS scams, doctor calls, or robocall bots
+            Place calls, manage contacts, and screen callers in real time
           </div>
         </div>
         <button onClick={onLaunchSimulator} className="btn-primary" style={{ padding: '10px 14px' }}>
-          <Radio size={16} /> Test Now
+          <PhoneIncoming size={16} /> Open Phone
         </button>
       </div>
 

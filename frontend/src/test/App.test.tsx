@@ -14,7 +14,7 @@ describe('AegisCall AI Frontend Application', () => {
     render(<App />);
 
     // Switch to Phone / Dialer Tab – shows the Recents/Contacts/Keypad sub-nav
-    const phoneTabBtn = screen.getByRole('button', { name: /Phone/i });
+    const phoneTabBtn = screen.getByRole('button', { name: /^Phone$/i });
     fireEvent.click(phoneTabBtn);
     // Dialer renders a 3-section sub-nav with Recents, Contacts, Keypad
     expect(screen.getByRole('button', { name: /Recents/i })).toBeInTheDocument();

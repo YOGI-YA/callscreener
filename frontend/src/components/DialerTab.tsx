@@ -23,6 +23,7 @@ type DialerSection = 'recent' | 'contacts' | 'keypad';
 
 interface DialerTabProps {
   onIncomingCallPayload?: (phone: string, name: string) => void;
+  onOutgoingCall?: (phone: string, name: string) => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -70,7 +71,7 @@ function avatarColor(name: string): string {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload }) => {
+export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onOutgoingCall }) => {
   const [section, setSection] = useState<DialerSection>('recent');
   const [dialNumber, setDialNumber] = useState('');
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -95,6 +96,7 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload }) =
 
   const handleDial = (digit: string) => {
     CapacitorService.triggerHapticFeedback();
+    CapacitorService.playDtmfTone(digit);
     setDialNumber((prev) => prev + digit);
   };
 
@@ -107,6 +109,9 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload }) =
     if (!target) return;
     CapacitorService.triggerHapticFeedback();
     await CapacitorService.makeCall(target);
+    if (onOutgoingCall) {
+      onOutgoingCall(target, name || 'Outgoing Call');
+    }
   };
 
   const handleAiScreen = (number: string, name: string) => {
@@ -290,7 +295,7 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload }) =
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}
-                        title="Simulate AI Screen"
+                        title="Screen Call with AI"
                       >
                         <Sparkles size={14} color="var(--accent-glow)" />
                       </button>
@@ -380,7 +385,7 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload }) =
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
-                      title="Test AI Screen"
+                      title="Screen Call with AI"
                     >
                       <Sparkles size={14} color="var(--accent-glow)" />
                     </button>
@@ -511,7 +516,7 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload }) =
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
-                    title="Test AI Call Screener"
+                    title="Screen Call with AI"
                   >
                     <Sparkles size={20} color="var(--accent-glow)" />
                   </button>
@@ -522,7 +527,7 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload }) =
             {/* AI hint */}
             {dialNumber && (
               <div style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                Tap <Sparkles size={11} style={{ display: 'inline' }} /> to test AI screening for this number
+                Tap <Sparkles size={11} style={{ display: 'inline' }} /> to screen incoming call with AI
               </div>
             )}
           </div>

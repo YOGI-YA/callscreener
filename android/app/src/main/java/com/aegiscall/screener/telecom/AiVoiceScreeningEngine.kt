@@ -58,26 +58,71 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
             tts?.language = Locale.US
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {
-                    // Route audio to earpiece (phone call path) so caller hears TTS
                     mainHandler.post {
-                        audioManager?.mode = AudioManager.MODE_IN_CALL
-                        @Suppress("DEPRECATION")
-                        audioManager?.isSpeakerphoneOn = false
+                        try {
+                            audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
+                            @Suppress("DEPRECATION")
+                            audioManager?.isSpeakerphoneOn = true
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Audio routing onStart error: ${e.message}")
+                        }
                     }
                 }
                 override fun onDone(utteranceId: String?) {
                     mainHandler.post {
+                        try {
+                            audioManager?.mode = AudioManager.MODE_IN_CALL
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Audio routing onDone error: ${e.message}")
+                        }
                         // After AI finishes speaking, start listening for caller's response
                         startListeningForCaller()
                     }
                 }
                 @Deprecated("Deprecated in Java")
-                override fun onError(utteranceId: String?) {}
+                override fun onError(utteranceId: String?) {
+                    mainHandler.post {
+                        startListeningForCaller()
+                    }
+                }
             })
             isTtsReady = true
             Log.i(TAG, "TextToSpeech engine initialized successfully")
+            applyHighFidelityVoice(Locale.US)
         } else {
             Log.e(TAG, "Failed to initialize TextToSpeech engine")
+        }
+    }
+
+    private fun applyHighFidelityVoice(targetLocale: Locale) {
+        try {
+            tts?.language = targetLocale
+            // Conversational rhythm: 1.03x speed, natural pitch
+            tts?.setSpeechRate(1.03f)
+            tts?.setPitch(1.0f)
+
+            val availableVoices = tts?.voices
+            if (!availableVoices.isNullOrEmpty()) {
+                val bestVoice = availableVoices
+                    .filter { it.locale.language == targetLocale.language }
+                    .maxByOrNull { v ->
+                        var score = 0
+                        val name = v.name.lowercase()
+                        if (name.contains("network")) score += 60
+                        if (name.contains("neural")) score += 50
+                        if (name.contains("natural")) score += 40
+                        if (name.contains("wavenet")) score += 35
+                        if (v.quality >= android.speech.tts.Voice.QUALITY_VERY_HIGH) score += 30
+                        if (v.quality == android.speech.tts.Voice.QUALITY_HIGH) score += 20
+                        score
+                    }
+                if (bestVoice != null) {
+                    tts?.voice = bestVoice
+                    Log.i(TAG, "Activated Free Neural Voice: ${bestVoice.name} (quality=${bestVoice.quality})")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not apply neural voice: ${e.message}")
         }
     }
 
@@ -88,14 +133,14 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
             else -> "en-US"
         }
 
-        // Update TTS locale
-        tts?.language = try {
+        initialize(context)
+
+        val targetLocale = try {
             Locale.forLanguageTag(currentLanguage)
         } catch (e: Exception) {
             Locale.US
         }
-
-        initialize(context)
+        applyHighFidelityVoice(targetLocale)
 
         val greeting = when (language.lowercase()) {
             "hi" -> "नमस्ते। मैं इस कॉल की जांच करने वाला एआई सहायक हूं। कृपया अपना नाम और कॉल करने का कारण बताएं।"

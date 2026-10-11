@@ -214,6 +214,141 @@ export class CapacitorService {
     return { success: false };
   }
 
+  public static async setMuted(muted: boolean): Promise<{ success: boolean; muted?: boolean }> {
+    if (!this.isNative()) return { success: true, muted };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.setMuted) return await plugin.setMuted({ muted });
+    } catch (e) {
+      console.error('setMuted failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async setSpeakerphone(speakerOn: boolean): Promise<{ success: boolean; speakerOn?: boolean }> {
+    if (!this.isNative()) return { success: true, speakerOn };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.setSpeakerphone) return await plugin.setSpeakerphone({ speakerOn });
+    } catch (e) {
+      console.error('setSpeakerphone failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async playDtmfTone(digit: string): Promise<{ success: boolean }> {
+    this.playWebDtmfTone(digit);
+    if (!this.isNative()) return { success: true };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.playDtmfTone) return await plugin.playDtmfTone({ digit });
+    } catch (e) {
+      console.error('playDtmfTone failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async stopDtmfTone(): Promise<{ success: boolean }> {
+    if (!this.isNative()) return { success: true };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.stopDtmfTone) return await plugin.stopDtmfTone();
+    } catch (e) {
+      console.error('stopDtmfTone failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async holdCall(hold: boolean): Promise<{ success: boolean; hold?: boolean }> {
+    if (!this.isNative()) return { success: true, hold };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.holdCall) return await plugin.holdCall({ hold });
+    } catch (e) {
+      console.error('holdCall failed:', e);
+    }
+    return { success: false };
+  }
+
+  // Web Audio DTMF synthesizer for authentic keypad dial sounds
+  private static audioCtx: AudioContext | null = null;
+  public static playWebDtmfTone(digit: string): void {
+    try {
+      const DTMF_FREQS: Record<string, [number, number]> = {
+        '1': [697, 1209], '2': [697, 1336], '3': [697, 1477],
+        '4': [770, 1209], '5': [770, 1336], '6': [770, 1477],
+        '7': [852, 1209], '8': [852, 1336], '9': [852, 1477],
+        '*': [941, 1209], '0': [941, 1336], '#': [941, 1477]
+      };
+      const freqs = DTMF_FREQS[digit];
+      if (!freqs) return;
+
+      if (!this.audioCtx) {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) this.audioCtx = new AudioContextClass();
+      }
+      if (!this.audioCtx) return;
+
+      const now = this.audioCtx.currentTime;
+      const osc1 = this.audioCtx.createOscillator();
+      const osc2 = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(freqs[0], now);
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(freqs[1], now);
+
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.audioCtx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.18);
+      osc2.stop(now + 0.18);
+    } catch {
+      // AudioContext could be blocked by autoplay policies
+    }
+  }
+
+  // TTS speech helper: only used in browser preview mode (never on native phone where native telephony routes audio)
+  public static speakOutLoud(text: string, lang = 'en-US', force = false): void {
+    if (this.isNative() && !force) {
+      // On real Android phone, the native telephony service speaks to the caller on the phone line
+      return;
+    }
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.lang = lang;
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch {
+      // Ignore TTS errors
+    }
+  }
+
+  public static addCallAudioStateListener(callback: (data: { muted: boolean; speakerOn: boolean }) => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('callAudioStateChanged', (data: any) => callback(data));
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching callAudioStateChanged listener:', e);
+    }
+    return null;
+  }
+
   // --- TELEPHONY EVENT LISTENERS ---
 
   public static addCallScreenedListener(callback: (call: ScreeningResult) => void): (() => void) | null {

@@ -122,6 +122,16 @@ class CallScreeningPlugin : Plugin() {
                 plugin.notifyListeners("callPickedUp", js, true)
             }
         }
+
+        fun broadcastCallAudioState(muted: Boolean, speakerOn: Boolean) {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("muted", muted)
+                    put("speakerOn", speakerOn)
+                }
+                plugin.notifyListeners("callAudioStateChanged", js, true)
+            }
+        }
     }
 
     override fun load() {
@@ -220,6 +230,46 @@ class CallScreeningPlugin : Plugin() {
     fun pickupCall(call: PluginCall) {
         AegisInCallService.pickupCall()
         val ret = JSObject().apply { put("success", true) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun setMuted(call: PluginCall) {
+        val muted = call.getBoolean("muted", false) ?: false
+        AegisInCallService.setMuted(muted)
+        val ret = JSObject().apply { put("success", true); put("muted", muted) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun setSpeakerphone(call: PluginCall) {
+        val speakerOn = call.getBoolean("speakerOn", false) ?: false
+        AegisInCallService.setSpeakerphone(speakerOn)
+        val ret = JSObject().apply { put("success", true); put("speakerOn", speakerOn) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun playDtmfTone(call: PluginCall) {
+        val toneStr = call.getString("digit") ?: "0"
+        val digit = toneStr.firstOrNull() ?: '0'
+        AegisInCallService.playDtmfTone(digit)
+        val ret = JSObject().apply { put("success", true) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun stopDtmfTone(call: PluginCall) {
+        AegisInCallService.stopDtmfTone()
+        val ret = JSObject().apply { put("success", true) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun holdCall(call: PluginCall) {
+        val hold = call.getBoolean("hold", false) ?: false
+        AegisInCallService.holdCall(hold)
+        val ret = JSObject().apply { put("success", true); put("hold", hold) }
         call.resolve(ret)
     }
 
