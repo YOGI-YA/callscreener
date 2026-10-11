@@ -44,6 +44,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
   const [isSpeakerOn, setIsSpeakerOn] = useState<boolean>(false);
   const [isOnHold, setIsOnHold] = useState<boolean>(false);
   const [isKeypadOpen, setIsKeypadOpen] = useState<boolean>(false);
+  const [isAiCoPilotOpen, setIsAiCoPilotOpen] = useState<boolean>(false);
+  const [callNotes, setCallNotes] = useState<string>('');
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [dialedDtmf, setDialedDtmf] = useState<string>('');
   const [callDuration, setCallDuration] = useState<number>(0);
@@ -144,8 +146,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     });
 
     const unlistenEnded = CapacitorService.addCallEndedListener(() => {
-      setCallEndedNotice('Call Disconnected');
-      setTimeout(() => onDismiss(), 1200);
+      setCallEndedNotice('Call Ended');
+      setTimeout(() => onDismiss(), 600);
     });
 
     const unlistenPickedUp = CapacitorService.addCallPickedUpListener(() => {
@@ -959,9 +961,9 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
           PHASE 3: CONNECTED — Production Phone In-Call Controls
          ──────────────────────────────────────────────────────────────── */}
       {callPhase === 'CONNECTED' && (
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between', padding: '10px 0' }}>
-          {/* Status banner */}
-          <div style={{ textAlign: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between', padding: '8px 0', minHeight: 0 }}>
+          {/* Status banner & Quick Route Indicators */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginBottom: 8, flexShrink: 0 }}>
             <div
               style={{
                 display: 'inline-flex',
@@ -979,6 +981,69 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
               {isOnHold ? <Pause size={14} /> : <PhoneCall size={14} />}
               <span>{isOnHold ? 'CALL ON HOLD' : 'CALL CONNECTED'}</span>
               {isRecording && <span style={{ color: 'var(--color-danger)', marginLeft: 6 }}>● REC</span>}
+            </div>
+
+            {/* Quick Status Chips */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button
+                onClick={handleToggleMute}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                  border: `1px solid ${isMuted ? 'var(--color-danger)' : 'var(--border-subtle)'}`,
+                  color: isMuted ? 'var(--color-danger)' : 'var(--text-secondary)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                {isMuted ? <MicOff size={12} /> : <Mic size={12} />}
+                <span>{isMuted ? 'Mic Muted' : 'Mic Live'}</span>
+              </button>
+
+              <button
+                onClick={handleToggleSpeaker}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  background: isSpeakerOn ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                  border: `1px solid ${isSpeakerOn ? 'var(--accent-glow)' : 'var(--border-subtle)'}`,
+                  color: isSpeakerOn ? 'var(--accent-glow)' : 'var(--text-secondary)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                {isSpeakerOn ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                <span>{isSpeakerOn ? 'Speaker On' : 'Earpiece'}</span>
+              </button>
+
+              <button
+                onClick={() => setIsAiCoPilotOpen(!isAiCoPilotOpen)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  background: isAiCoPilotOpen ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                  border: `1px solid ${isAiCoPilotOpen ? 'var(--accent-glow)' : 'var(--border-subtle)'}`,
+                  color: isAiCoPilotOpen ? 'var(--accent-glow)' : 'var(--text-secondary)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                <Sparkles size={12} />
+                <span>{isAiCoPilotOpen ? 'Close Co-Pilot' : 'AI Co-Pilot'}</span>
+              </button>
             </div>
           </div>
 
@@ -1048,6 +1113,89 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                 ))}
               </div>
             </div>
+          ) : isAiCoPilotOpen ? (
+            /* In-Call Live AI Co-Pilot & Scratchpad Drawer */
+            <div
+              className="glass-card"
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                padding: '12px',
+                background: 'rgba(10, 15, 26, 0.95)',
+                border: '1px solid var(--border-glow)',
+                overflowY: 'auto',
+                minHeight: 180
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-glow)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Sparkles size={13} /> Live AI Call Co-Pilot
+                </span>
+                <button
+                  onClick={() => setIsAiCoPilotOpen(false)}
+                  style={{ color: 'var(--text-secondary)', fontSize: '0.72rem', fontWeight: 600 }}
+                >
+                  Hide
+                </button>
+              </div>
+
+              {/* Real-time caller transcription */}
+              <div style={{ fontSize: '0.75rem', color: '#fff', background: 'rgba(255,255,255,0.05)', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                  Caller Audio Transcription:
+                </div>
+                <div>{callerStreamText || (dialogue.length > 0 ? dialogue[dialogue.length - 1].text : 'Listening to caller audio…')}</div>
+              </div>
+
+              {/* In-Call Scratchpad Notes */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                  In-Call Notes / Scratchpad:
+                </label>
+                <textarea
+                  value={callNotes}
+                  onChange={(e) => setCallNotes(e.target.value)}
+                  placeholder="Type notes (e.g. address, order number, reference code)..."
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(0,0,0,0.3)',
+                    border: '1px solid var(--border-medium)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: '#fff',
+                    padding: '6px 8px',
+                    fontSize: '0.75rem',
+                    resize: 'none'
+                  }}
+                />
+              </div>
+
+              {/* Handover to AI Screener Button */}
+              <button
+                onClick={() => {
+                  CapacitorService.triggerHapticFeedback();
+                  setCallPhase('SCREENING');
+                  handleAiSpeakUtterance('Please excuse me for a moment while our assistant attends to this request.');
+                }}
+                className="btn-secondary"
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  borderColor: 'var(--border-glow)',
+                  background: 'rgba(99, 102, 241, 0.15)',
+                  color: 'var(--accent-glow)'
+                }}
+              >
+                <Bot size={14} /> Hand Over to AI Screener
+              </button>
+            </div>
           ) : (
             /* 6-Button Phone In-Call Controls Grid */
             <div
@@ -1075,7 +1223,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    boxShadow: isMuted ? '0 0 16px rgba(239, 68, 68, 0.4)' : 'none'
                   }}
                 >
                   {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
@@ -1122,7 +1271,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    boxShadow: isSpeakerOn ? '0 0 16px rgba(99, 102, 241, 0.4)' : 'none'
                   }}
                 >
                   {isSpeakerOn ? <Volume2 size={24} /> : <VolumeX size={24} />}
@@ -1146,7 +1296,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    boxShadow: isOnHold ? '0 0 16px rgba(245, 158, 11, 0.4)' : 'none'
                   }}
                 >
                   {isOnHold ? <Play size={24} /> : <Pause size={24} />}
@@ -1156,10 +1307,10 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                 </span>
               </div>
 
-              {/* 5. AI Assistant note/switch back to screen */}
+              {/* 5. AI Co-Pilot / Notes */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                 <button
-                  onClick={() => setCallPhase('SCREENING')}
+                  onClick={() => setIsAiCoPilotOpen(!isAiCoPilotOpen)}
                   style={{
                     width: 62,
                     height: 62,
@@ -1171,12 +1322,12 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}
-                  title="Switch to AI Call Screener"
+                  title="Open AI Co-Pilot & Notes"
                 >
-                  <Bot size={24} />
+                  <Sparkles size={24} />
                 </button>
                 <span style={{ fontSize: '0.72rem', color: 'var(--accent-glow)', fontWeight: 600 }}>
-                  AI Screener
+                  AI Co-Pilot
                 </span>
               </div>
 
@@ -1197,7 +1348,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    boxShadow: isRecording ? '0 0 16px rgba(239, 68, 68, 0.4)' : 'none'
                   }}
                 >
                   <Radio size={24} />
@@ -1210,7 +1362,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
           )}
 
           {/* End Call Button */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10, flexShrink: 0 }}>
             <button
               onClick={handleHangUp}
               style={{

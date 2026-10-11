@@ -33,7 +33,13 @@ class AegisInCallService : InCallService() {
         fun rejectCall() {
             isScreeningActive = false
             AiVoiceScreeningEngine.stop()
+            try {
+                serviceInstance?.let { CallNotificationManager.cancelCallNotifications(it) }
+            } catch (e: Exception) {
+                // ignore
+            }
             activeCall?.disconnect()
+            CallScreeningPlugin.broadcastCallEnded()
         }
 
         fun startAiScreening(language: String = "auto") {
@@ -50,6 +56,13 @@ class AegisInCallService : InCallService() {
 
             // Start AI voice conversation (TTS + STT)
             AiVoiceScreeningEngine.startScreeningConversation(appContext, language)
+
+            // Show ongoing screening notification
+            activeCall?.let { call ->
+                val phone = call.details.handle?.schemeSpecificPart ?: "Unknown"
+                val name = call.details.callerDisplayName
+                serviceInstance?.let { CallNotificationManager.showOngoingCallNotification(it, phone, name) }
+            }
         }
 
         fun sendQuickReply(replyText: String) {
@@ -68,6 +81,13 @@ class AegisInCallService : InCallService() {
                 Log.w(TAG, "Could not reset audio route to earpiece: ${e.message}")
             }
             CallScreeningPlugin.broadcastCallPickedUp()
+
+            // Show ongoing connected call notification
+            activeCall?.let { call ->
+                val phone = call.details.handle?.schemeSpecificPart ?: "Unknown"
+                val name = call.details.callerDisplayName
+                serviceInstance?.let { CallNotificationManager.showOngoingCallNotification(it, phone, name) }
+            }
         }
 
         fun setMuted(muted: Boolean) {
@@ -139,7 +159,12 @@ class AegisInCallService : InCallService() {
         // Broadcast incoming call to frontend UI
         CallScreeningPlugin.broadcastIncomingCall(phoneNumber, callerName)
 
-        // Wake screen & bring MainActivity to front for answering/screening
+        // Show system notification and wake screen
+        if (call.state == Call.STATE_RINGING) {
+            CallNotificationManager.showIncomingCallNotification(this, phoneNumber, callerName)
+        } else if (call.state == Call.STATE_ACTIVE) {
+            CallNotificationManager.showOngoingCallNotification(this, phoneNumber, callerName)
+        }
         bringAppToFront()
 
         call.registerCallback(object : Call.Callback() {
@@ -150,14 +175,23 @@ class AegisInCallService : InCallService() {
                 when (state) {
                     Call.STATE_RINGING -> {
                         CallScreeningPlugin.broadcastIncomingCall(phoneNumber, callerName)
+                        CallNotificationManager.showIncomingCallNotification(this@AegisInCallService, phoneNumber, callerName)
                         bringAppToFront()
                     }
                     Call.STATE_ACTIVE -> {
                         CallScreeningPlugin.broadcastCallState("ACTIVE")
+                        CallNotificationManager.showOngoingCallNotification(
+                            this@AegisInCallService,
+                            phoneNumber,
+                            callerName,
+                            isMuted = callAudioState?.isMuted ?: false,
+                            isSpeaker = callAudioState?.route == CallAudioState.ROUTE_SPEAKER
+                        )
                     }
                     Call.STATE_DISCONNECTED -> {
                         isScreeningActive = false
                         AiVoiceScreeningEngine.stop()
+                        CallNotificationManager.cancelCallNotifications(this@AegisInCallService)
                         CallScreeningPlugin.broadcastCallEnded()
                         activeCall = null
                     }
@@ -171,6 +205,7 @@ class AegisInCallService : InCallService() {
         Log.i(TAG, "Call Removed")
         isScreeningActive = false
         AiVoiceScreeningEngine.stop()
+        CallNotificationManager.cancelCallNotifications(this)
         CallScreeningPlugin.broadcastCallEnded()
         if (activeCall == call) {
             activeCall = null
@@ -184,6 +219,20 @@ class AegisInCallService : InCallService() {
                 muted = it.isMuted,
                 speakerOn = it.route == CallAudioState.ROUTE_SPEAKER
             )
+
+            activeCall?.let { call ->
+                if (call.state == Call.STATE_ACTIVE) {
+                    val phone = call.details.handle?.schemeSpecificPart ?: "Unknown"
+                    val name = call.details.callerDisplayName
+                    CallNotificationManager.showOngoingCallNotification(
+                        this,
+                        phone,
+                        name,
+                        isMuted = it.isMuted,
+                        isSpeaker = it.route == CallAudioState.ROUTE_SPEAKER
+                    )
+                }
+            }
         }
     }
 

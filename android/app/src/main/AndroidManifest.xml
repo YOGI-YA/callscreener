@@ -80,6 +80,20 @@
             </intent-filter>
         </service>
 
+        <!-- In-Call Notification Action Receiver (Hang Up, Mute, Speaker, Answer, Screen) -->
+        <receiver
+            android:name=".telecom.CallNotificationReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.aegiscall.screener.ACTION_ANSWER_CALL" />
+                <action android:name="com.aegiscall.screener.ACTION_DECLINE_CALL" />
+                <action android:name="com.aegiscall.screener.ACTION_HANG_UP" />
+                <action android:name="com.aegiscall.screener.ACTION_SCREEN_CALL" />
+                <action android:name="com.aegiscall.screener.ACTION_TOGGLE_MUTE" />
+                <action android:name="com.aegiscall.screener.ACTION_TOGGLE_SPEAKER" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

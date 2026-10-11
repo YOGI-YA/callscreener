@@ -56,7 +56,19 @@ object CallHistoryStorage {
         prefs.edit().remove(KEY_CALL_LOGS).apply()
     }
 
+    fun cancelScreeningNotification(context: Context) {
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+            notificationManager.cancel(CallNotificationManager.NOTIFICATION_ID_SCREENING)
+        } catch (e: Exception) {
+            // ignore non-fatal
+        }
+    }
+
     private fun postNotification(context: Context, call: ScreeningData) {
+        // Do not post notification if rule or engine flagged to skip notification (e.g. auto-reject or user dismissed)
+        if (call.suggestedActions.skipNotification) return
+
         try {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
 
@@ -94,8 +106,7 @@ object CallHistoryStorage {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
 
-            val notificationId = (System.currentTimeMillis() % 100000).toInt()
-            notificationManager.notify(notificationId, builder.build())
+            notificationManager.notify(CallNotificationManager.NOTIFICATION_ID_SCREENING, builder.build())
         } catch (e: Exception) {
             // Notifications may be blocked by system or lack permission; non-fatal
         }
