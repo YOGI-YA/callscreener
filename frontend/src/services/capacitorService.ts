@@ -304,6 +304,74 @@ export class CapacitorService {
     return null;
   }
 
+  // --- CONTACTS ---
+
+  public static async getContacts(): Promise<{ id: string; name: string; number: string }[]> {
+    if (!this.isNative()) {
+      // Mock contacts for browser testing
+      return [
+        { id: '1', name: 'Mum', number: '+919876543210' },
+        { id: '2', name: 'Dad', number: '+919812345678' },
+        { id: '3', name: 'Rahul Kumar', number: '+919988776655' },
+        { id: '4', name: 'Priya Sharma', number: '+918877665544' },
+        { id: '5', name: 'Delivery Guy', number: '+917766554433' },
+      ];
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.getContacts) {
+        const res = await plugin.getContacts();
+        return res?.contacts || [];
+      }
+    } catch (e) {
+      console.warn('getContacts failed:', e);
+    }
+    return [];
+  }
+
+  // --- DEVICE CALL LOG ---
+
+  public static async getDeviceCallLog(limit = 100): Promise<{ number: string; name: string; type: string; date: number; duration: number }[]> {
+    if (!this.isNative()) {
+      const now = Date.now();
+      return [
+        { number: '+919876543210', name: 'Mum', type: 'INCOMING', date: now - 60000, duration: 320 },
+        { number: '+917766554433', name: 'Unknown Caller', type: 'MISSED', date: now - 3600000, duration: 0 },
+        { number: '+911234567890', name: '', type: 'MISSED', date: now - 7200000, duration: 0 },
+        { number: '+919988776655', name: 'Rahul Kumar', type: 'OUTGOING', date: now - 86400000, duration: 120 },
+        { number: '+916655443322', name: 'HDFC Bank', type: 'INCOMING', date: now - 172800000, duration: 45 },
+      ];
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.getDeviceCallLog) {
+        const res = await plugin.getDeviceCallLog({ limit });
+        return res?.calls || [];
+      }
+    } catch (e) {
+      console.warn('getDeviceCallLog failed:', e);
+    }
+    return [];
+  }
+
+  // --- MAKE OUTGOING CALL ---
+
+  public static async makeCall(number: string): Promise<{ success: boolean }> {
+    if (!this.isNative()) {
+      window.open(`tel:${number}`, '_blank');
+      return { success: true };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.makeCall) {
+        return await plugin.makeCall({ number });
+      }
+    } catch (e) {
+      console.error('makeCall failed:', e);
+    }
+    return { success: false };
+  }
+
   public static triggerHapticFeedback(): void {
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try {

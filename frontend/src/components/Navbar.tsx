@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Radio, History, Shield, Settings } from 'lucide-react';
+import { LayoutDashboard, Phone, History, Shield, Settings } from 'lucide-react';
 
-export type TabId = 'dashboard' | 'simulator' | 'logs' | 'rules' | 'settings';
+export type TabId = 'dashboard' | 'dialer' | 'logs' | 'rules' | 'settings';
 
 interface NavbarProps {
   activeTab: TabId;
@@ -12,7 +12,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, unreadCount = 0 }) => {
   const tabs = [
     { id: 'dashboard' as TabId, label: 'Overview', icon: LayoutDashboard },
-    { id: 'simulator' as TabId, label: 'Screener', icon: Radio },
+    { id: 'dialer' as TabId, label: 'Phone', icon: Phone },
     { id: 'logs' as TabId, label: 'History', icon: History, badge: unreadCount },
     { id: 'rules' as TabId, label: 'Rules', icon: Shield },
     { id: 'settings' as TabId, label: 'Settings', icon: Settings },
@@ -47,7 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, unreadCo
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
                   }}
                 >
                   {tab.badge}

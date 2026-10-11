@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Radio, Activity, RefreshCw } from 'lucide-react';
 import { TabId, Navbar } from './components/Navbar';
 import { DashboardTab } from './components/DashboardTab';
-import { SimulatorTab } from './components/SimulatorTab';
+import { DialerTab } from './components/DialerTab';
 import { CallLogsTab } from './components/CallLogsTab';
 import { RulesTab } from './components/RulesTab';
 import { SettingsTab } from './components/SettingsTab';
@@ -101,7 +101,31 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Trigger simulated incoming call
+  // Trigger incoming call simulation from Dialer tab (Contacts / Recents)
+  const handleDialerAiScreen = async (phoneNumber: string, callerName: string) => {
+    const payload: IncomingCallPayload = {
+      phoneNumber,
+      callerName: callerName || 'Unknown Caller',
+      callPresentationMode: 'ALLOWED',
+      simulatedAudioTranscript: `Hi, I am calling from ${callerName || phoneNumber}. Please let me speak to the recipient.`
+    };
+    setIncomingCall(payload);
+    setActiveResult(null);
+    setIsScreening(true);
+
+    try {
+      const result = await ApiService.screenCall(payload);
+      setActiveResult(result);
+      setLogs((prev) => [result, ...prev]);
+      ApiService.getStats().then(setStats).catch(() => {});
+    } catch (error: any) {
+      console.error('AI screening failed:', error);
+    } finally {
+      setIsScreening(false);
+    }
+  };
+
+  // Trigger simulated incoming call (from Dashboard simulator)
   const handleSimulateCall = async (payload: IncomingCallPayload) => {
     setIncomingCall(payload);
     setActiveResult(null);
@@ -220,16 +244,15 @@ export const App: React.FC = () => {
               recentLogs={logs}
               backendStatus={backendStatus}
               roleGranted={roleGranted}
-              onLaunchSimulator={() => setActiveTab('simulator')}
+              onLaunchSimulator={() => setActiveTab('dialer')}
               onSelectLog={(log) => setSelectedLog(log)}
-              onNavigateToTab={(tab) => setActiveTab(tab)}
+              onNavigateToTab={(tab) => setActiveTab(tab as TabId)}
             />
           )}
 
-          {activeTab === 'simulator' && (
-            <SimulatorTab
-              onSimulateCall={handleSimulateCall}
-              isLoading={isScreening}
+          {activeTab === 'dialer' && (
+            <DialerTab
+              onIncomingCallPayload={handleDialerAiScreen}
             />
           )}
 

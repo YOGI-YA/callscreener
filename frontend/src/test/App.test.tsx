@@ -12,12 +12,14 @@ describe('AegisCall AI Frontend Application', () => {
 
   it('navigates between navigation tabs', async () => {
     render(<App />);
-    
-    // Switch to Screener Simulator Tab
-    const screenerTabBtn = screen.getByRole('button', { name: /Screener/i });
-    fireEvent.click(screenerTabBtn);
-    expect(screen.getByText(/Call Screening Simulator/i)).toBeInTheDocument();
-    expect(screen.getByText(/IRS Arrest Warrant Scam/i)).toBeInTheDocument();
+
+    // Switch to Phone / Dialer Tab – shows the Recents/Contacts/Keypad sub-nav
+    const phoneTabBtn = screen.getByRole('button', { name: /Phone/i });
+    fireEvent.click(phoneTabBtn);
+    // Dialer renders a 3-section sub-nav with Recents, Contacts, Keypad
+    expect(screen.getByRole('button', { name: /Recents/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Contacts/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Keypad/i })).toBeInTheDocument();
 
     // Switch to History Tab
     const historyTabBtn = screen.getByRole('button', { name: /History/i });

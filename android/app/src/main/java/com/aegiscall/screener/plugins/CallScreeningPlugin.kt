@@ -2,10 +2,13 @@ package com.aegiscall.screener.plugins
 
 import android.app.Activity
 import android.app.role.RoleManager
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.provider.CallLog
+import android.provider.ContactsContract
 import android.provider.Settings
 import android.telecom.TelecomManager
 import androidx.activity.result.ActivityResult
@@ -378,5 +381,121 @@ class CallScreeningPlugin : Plugin() {
         val ret = JSObject()
         ret.put("success", true)
         call.resolve(ret)
+    }
+
+    // --- CONTACTS ---
+
+    @PluginMethod
+    fun getContacts(call: PluginCall) {
+        try {
+            val cr: ContentResolver = context.contentResolver
+            val cursor = cr.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                arrayOf(
+                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    ContactsContract.CommonDataKinds.Phone.NUMBER,
+                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID
+                ),
+                null, null,
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+            )
+            val arr = JSArray()
+            val seen = mutableSetOf<String>()
+            cursor?.use {
+                val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numIdx  = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                val idIdx   = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                while (it.moveToNext()) {
+                    val name   = it.getString(nameIdx) ?: "Unknown"
+                    val number = it.getString(numIdx)?.replace("\\s".toRegex(), "") ?: continue
+                    val id     = it.getString(idIdx) ?: ""
+                    val key    = "${name}::${number}"
+                    if (seen.add(key)) {
+                        arr.put(JSObject().apply {
+                            put("id", id)
+                            put("name", name)
+                            put("number", number)
+                        })
+                    }
+                }
+            }
+            call.resolve(JSObject().apply { put("contacts", arr) })
+        } catch (e: Exception) {
+            call.reject("Failed to read contacts: ${e.message}")
+        }
+    }
+
+    // --- DEVICE CALL LOG ---
+
+    @PluginMethod
+    fun getDeviceCallLog(call: PluginCall) {
+        try {
+            val limit = call.getInt("limit", 100) ?: 100
+            val cr: ContentResolver = context.contentResolver
+            val cursor = cr.query(
+                CallLog.Calls.CONTENT_URI,
+                arrayOf(
+                    CallLog.Calls.NUMBER,
+                    CallLog.Calls.CACHED_NAME,
+                    CallLog.Calls.TYPE,
+                    CallLog.Calls.DATE,
+                    CallLog.Calls.DURATION
+                ),
+                null, null,
+                CallLog.Calls.DATE + " DESC LIMIT $limit"
+            )
+            val arr = JSArray()
+            cursor?.use {
+                val numIdx  = it.getColumnIndex(CallLog.Calls.NUMBER)
+                val nameIdx = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
+                val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
+                val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
+                val durIdx  = it.getColumnIndex(CallLog.Calls.DURATION)
+                while (it.moveToNext()) {
+                    val callType = when (it.getInt(typeIdx)) {
+                        CallLog.Calls.INCOMING_TYPE  -> "INCOMING"
+                        CallLog.Calls.OUTGOING_TYPE  -> "OUTGOING"
+                        CallLog.Calls.MISSED_TYPE    -> "MISSED"
+                        CallLog.Calls.REJECTED_TYPE  -> "REJECTED"
+                        else -> "UNKNOWN"
+                    }
+                    arr.put(JSObject().apply {
+                        put("number",   it.getString(numIdx) ?: "")
+                        put("name",     it.getString(nameIdx) ?: "")
+                        put("type",     callType)
+                        put("date",     it.getLong(dateIdx))
+                        put("duration", it.getLong(durIdx))
+                    })
+                }
+            }
+            call.resolve(JSObject().apply { put("calls", arr) })
+        } catch (e: Exception) {
+            call.reject("Failed to read call log: ${e.message}")
+        }
+    }
+
+    // --- MAKE OUTGOING CALL ---
+
+    @PluginMethod
+    fun makeCall(call: PluginCall) {
+        val number = call.getString("number")
+        if (number.isNullOrBlank()) {
+            call.reject("number is required")
+            return
+        }
+        try {
+            val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$number")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            call.resolve(JSObject().apply { put("success", true) })
+        } catch (e: Exception) {
+            // Fallback: open dialer with number pre-filled
+            val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(dialIntent)
+            call.resolve(JSObject().apply { put("success", true) })
+        }
     }
 }
