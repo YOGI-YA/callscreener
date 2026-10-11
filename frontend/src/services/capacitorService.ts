@@ -121,9 +121,103 @@ export class CapacitorService {
     return false;
   }
 
+  // --- DEFAULT PHONE APP (DIALER) ROLE ---
+
+  public static async checkDialerRole(): Promise<{ isDefaultDialer: boolean }> {
+    if (!this.isNative()) {
+      const mockDialer = localStorage.getItem('mock_dialer_granted') === 'true';
+      return { isDefaultDialer: mockDialer };
+    }
+
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin && typeof plugin.checkDialerRole === 'function') {
+        return await plugin.checkDialerRole();
+      }
+    } catch (e) {
+      console.warn('checkDialerRole failed:', e);
+    }
+    return { isDefaultDialer: false };
+  }
+
+  public static async requestDialerRole(): Promise<{ success: boolean; message?: string }> {
+    if (!this.isNative()) {
+      localStorage.setItem('mock_dialer_granted', 'true');
+      return { success: true, message: 'Browser simulation: Dialer role granted' };
+    }
+
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin && typeof plugin.requestDialerRole === 'function') {
+        return await plugin.requestDialerRole();
+      }
+    } catch (e: any) {
+      return { success: false, message: e.message || 'Failed to request dialer role' };
+    }
+    return { success: false, message: 'CallScreeningBridge plugin not available' };
+  }
+
+  // --- LIVE TELEPHONY & AI CALL CONTROLS ---
+
+  public static async answerCall(): Promise<{ success: boolean }> {
+    if (!this.isNative()) return { success: true };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.answerCall) return await plugin.answerCall();
+    } catch (e) {
+      console.error('answerCall failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async rejectCall(): Promise<{ success: boolean }> {
+    if (!this.isNative()) return { success: true };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.rejectCall) return await plugin.rejectCall();
+    } catch (e) {
+      console.error('rejectCall failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async screenCallWithAi(language: string = 'auto'): Promise<{ success: boolean }> {
+    if (!this.isNative()) return { success: true };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.screenCallWithAi) return await plugin.screenCallWithAi({ language });
+    } catch (e) {
+      console.error('screenCallWithAi failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async sendAiReply(replyText: string): Promise<{ success: boolean }> {
+    if (!this.isNative()) return { success: true };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.sendAiReply) return await plugin.sendAiReply({ replyText });
+    } catch (e) {
+      console.error('sendAiReply failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async pickupCall(): Promise<{ success: boolean }> {
+    if (!this.isNative()) return { success: true };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.pickupCall) return await plugin.pickupCall();
+    } catch (e) {
+      console.error('pickupCall failed:', e);
+    }
+    return { success: false };
+  }
+
+  // --- TELEPHONY EVENT LISTENERS ---
+
   public static addCallScreenedListener(callback: (call: ScreeningResult) => void): (() => void) | null {
     if (!this.isNative()) return null;
-
     try {
       const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
       if (bridge && typeof bridge.addListener === 'function') {
@@ -137,7 +231,76 @@ export class CapacitorService {
     } catch (e) {
       console.warn('Error attaching callScreened listener:', e);
     }
+    return null;
+  }
 
+  public static addIncomingCallListener(callback: (call: { phoneNumber: string; callerName: string; timestamp: number }) => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('incomingPhoneCall', (data: any) => callback(data));
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching incomingPhoneCall listener:', e);
+    }
+    return null;
+  }
+
+  public static addLiveTranscriptListener(callback: (data: { speaker: string; text: string; isFinal: boolean; timestamp: number }) => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('liveCallTranscript', (data: any) => callback(data));
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching liveCallTranscript listener:', e);
+    }
+    return null;
+  }
+
+  public static addAiSpeechListener(callback: (data: { speaker: string; text: string; timestamp: number }) => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('aiSpeechUtterance', (data: any) => callback(data));
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching aiSpeechUtterance listener:', e);
+    }
+    return null;
+  }
+
+  public static addCallEndedListener(callback: () => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('phoneCallEnded', () => callback());
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching phoneCallEnded listener:', e);
+    }
+    return null;
+  }
+
+  public static addCallPickedUpListener(callback: () => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('callPickedUp', () => callback());
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching callPickedUp listener:', e);
+    }
     return null;
   }
 

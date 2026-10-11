@@ -61,7 +61,7 @@ class AiCallScreeningService : CallScreeningService() {
             CallScreeningPlugin.broadcastScreenedCall(fastRuleResult)
             return
         }
-
+    
         // 2. Stage 2: Pure On-Device AI / Local Inference with Strict Deadline
         serviceScope.launch {
             val screeningResult: ScreeningData = try {

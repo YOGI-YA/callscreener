@@ -7,8 +7,10 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.telecom.TelecomManager
 import androidx.activity.result.ActivityResult
 import com.aegiscall.screener.models.ScreeningData
+import com.aegiscall.screener.telecom.AegisInCallService
 import com.aegiscall.screener.telecom.CallHistoryStorage
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
@@ -56,12 +58,169 @@ class CallScreeningPlugin : Plugin() {
                 plugin.notifyListeners("callScreened", js, true)
             }
         }
+
+        fun broadcastIncomingCall(phoneNumber: String, callerName: String) {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("phoneNumber", phoneNumber)
+                    put("callerName", callerName)
+                    put("timestamp", System.currentTimeMillis())
+                }
+                plugin.notifyListeners("incomingPhoneCall", js, true)
+            }
+        }
+
+        fun broadcastCallerTranscript(text: String, isFinal: Boolean) {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("speaker", "CALLER")
+                    put("text", text)
+                    put("isFinal", isFinal)
+                    put("timestamp", System.currentTimeMillis())
+                }
+                plugin.notifyListeners("liveCallTranscript", js, true)
+            }
+        }
+
+        fun broadcastAiSpeech(text: String) {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("speaker", "AI")
+                    put("text", text)
+                    put("timestamp", System.currentTimeMillis())
+                }
+                plugin.notifyListeners("aiSpeechUtterance", js, true)
+            }
+        }
+
+        fun broadcastCallState(state: String) {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("state", state)
+                }
+                plugin.notifyListeners("callStateChanged", js, true)
+            }
+        }
+
+        fun broadcastCallEnded() {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("ended", true)
+                }
+                plugin.notifyListeners("phoneCallEnded", js, true)
+            }
+        }
+
+        fun broadcastCallPickedUp() {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("pickedUp", true)
+                }
+                plugin.notifyListeners("callPickedUp", js, true)
+            }
+        }
     }
 
     override fun load() {
         super.load()
         instance = this
     }
+
+    // --- DIALER / PHONE APP ROLE ---
+
+    @PluginMethod
+    fun checkDialerRole(call: PluginCall) {
+        val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+        val isDefaultDialer = telecomManager?.defaultDialerPackage == context.packageName
+
+        val ret = JSObject().apply {
+            put("isDefaultDialer", isDefaultDialer)
+        }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun requestDialerRole(call: PluginCall) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = context.getSystemService(Context.ROLE_SERVICE) as? RoleManager
+            if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_DIALER)) {
+                if (roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) {
+                    val ret = JSObject().apply {
+                        put("success", true)
+                        put("message", "AegisCall is already default Phone app")
+                    }
+                    call.resolve(ret)
+                    return
+                }
+                val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_DIALER)
+                startActivityForResult(call, intent, "handleDialerRoleResult")
+                return
+            }
+        }
+
+        // Fallback for Android 9 and below
+        val intent = Intent(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER).apply {
+            putExtra(TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME, context.packageName)
+        }
+        startActivityForResult(call, intent, "handleDialerRoleResult")
+    }
+
+    @ActivityCallback
+    fun handleDialerRoleResult(call: PluginCall, result: ActivityResult) {
+        val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+        val isDefault = telecomManager?.defaultDialerPackage == context.packageName
+
+        val ret = JSObject().apply {
+            put("success", isDefault)
+            put("granted", isDefault)
+        }
+        call.resolve(ret)
+    }
+
+    // --- LIVE CALL CONTROLS (IN-CALL PHONE SERVICE) ---
+
+    @PluginMethod
+    fun answerCall(call: PluginCall) {
+        AegisInCallService.answerCall()
+        val ret = JSObject().apply { put("success", true) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun rejectCall(call: PluginCall) {
+        AegisInCallService.rejectCall()
+        val ret = JSObject().apply { put("success", true) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun screenCallWithAi(call: PluginCall) {
+        val language = call.getString("language") ?: "auto"
+        AegisInCallService.startAiScreening(language)
+        val ret = JSObject().apply { put("success", true) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun sendAiReply(call: PluginCall) {
+        val replyText = call.getString("replyText")
+        if (!replyText.isNullOrBlank()) {
+            AegisInCallService.sendQuickReply(replyText)
+            val ret = JSObject().apply { put("success", true) }
+            call.resolve(ret)
+        } else {
+            call.reject("replyText is required")
+        }
+    }
+
+    @PluginMethod
+    fun pickupCall(call: PluginCall) {
+        AegisInCallService.pickupCall()
+        val ret = JSObject().apply { put("success", true) }
+        call.resolve(ret)
+    }
+
+    // --- CALL SCREENING ROLE (METADATA FILTER) ---
 
     @PluginMethod
     fun checkScreeningRole(call: PluginCall) {

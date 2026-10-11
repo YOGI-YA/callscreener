@@ -66,11 +66,27 @@ export const App: React.FC = () => {
       setLogs((prev) => [realCall, ...prev]);
       ApiService.getStats().then(setStats).catch(() => {});
       setActiveResult(realCall);
+    });
+
+    // Listen for real live phone calls handled by Android InCallService (Dialer UI)
+    const removeIncomingListener = CapacitorService.addIncomingCallListener((incoming) => {
+      console.log('Live phone call ringing:', incoming);
       setIncomingCall({
-        phoneNumber: realCall.phoneNumber,
-        callerName: realCall.callerName,
+        phoneNumber: incoming.phoneNumber,
+        callerName: incoming.callerName || 'Incoming Caller',
         callPresentationMode: 'ALLOWED'
       });
+
+      // Analyze caller with on-device AI
+      ApiService.screenCall({
+        phoneNumber: incoming.phoneNumber,
+        callerName: incoming.callerName,
+        callPresentationMode: 'ALLOWED'
+      }).then((result) => {
+        setActiveResult(result);
+        setLogs((prev) => [result, ...prev]);
+        ApiService.getStats().then(setStats).catch(() => {});
+      }).catch(console.error);
     });
 
     const interval = setInterval(() => {
@@ -81,6 +97,7 @@ export const App: React.FC = () => {
     return () => {
       clearInterval(interval);
       if (removeListener) removeListener();
+      if (removeIncomingListener) removeIncomingListener();
     };
   }, []);
 

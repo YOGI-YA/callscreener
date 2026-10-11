@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Settings, ShieldCheck, Server, Smartphone, ExternalLink, HelpCircle, Check, RefreshCw, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, ShieldCheck, Server, Smartphone, ExternalLink, HelpCircle, Check, RefreshCw, AlertTriangle, Phone } from 'lucide-react';
 import { CapacitorService } from '../services/capacitorService';
 import { ApiService } from '../services/api';
 
@@ -14,6 +14,12 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
   const [isTesting, setIsTesting] = useState(false);
   const [isRequestingRole, setIsRequestingRole] = useState(false);
   const [roleMessage, setRoleMessage] = useState<string | null>(null);
+
+  const [dialerGranted, setDialerGranted] = useState(false);
+
+  useEffect(() => {
+    CapacitorService.checkDialerRole().then((res) => setDialerGranted(res.isDefaultDialer));
+  }, []);
 
   const handleSaveApiUrl = () => {
     ApiService.setBaseUrl(apiUrl);
@@ -35,6 +41,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
     onRefreshRole();
   };
 
+  const handleRequestDialer = async () => {
+    const res = await CapacitorService.requestDialerRole();
+    setRoleMessage(res.message || 'Phone app role requested');
+    const status = await CapacitorService.checkDialerRole();
+    setDialerGranted(status.isDefaultDialer);
+    onRefreshRole();
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Settings Header */}
@@ -44,16 +58,51 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
           <h2 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Settings & Integration</h2>
         </div>
         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-          Configure Android native permissions, cloud backend endpoints, and screening parameters.
+          Configure Android Phone App permissions, AI call screener voice engine, and local endpoints.
         </p>
       </div>
 
-      {/* Android RoleManager Card */}
+      {/* Default Phone App (Dialer & InCallService) Card */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 10, border: '1px solid var(--border-glow)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Phone size={18} color="var(--accent-glow)" />
+            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Default Phone App (Dialer)</span>
+          </div>
+          <span
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              color: dialerGranted ? 'var(--color-safe)' : 'var(--color-warning)',
+              background: dialerGranted ? 'var(--color-safe-bg)' : 'var(--color-warning-bg)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-full)'
+            }}
+          >
+            {dialerGranted ? 'Active Phone App' : 'Set as Default'}
+          </span>
+        </div>
+
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+          <strong>Required for Live AI Conversation (Pixel / Truecaller Assistant):</strong> Setting AegisCall as your default Phone App allows it to answer incoming phone calls and conduct real-time AI screening on your behalf.
+        </p>
+
+        <button
+          onClick={handleRequestDialer}
+          className="btn-primary"
+          style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)' }}
+        >
+          <Phone size={16} />
+          <span>{dialerGranted ? 'Re-verify Default Phone App' : 'Set as Default Phone App (1-Tap)'}</span>
+        </button>
+      </div>
+
+      {/* Android RoleManager Call Screening Card */}
       <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Smartphone size={18} color="var(--accent-glow)" />
-            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Android Telecom Role</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Call Screening Role</span>
           </div>
           <span
             style={{
@@ -70,7 +119,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
         </div>
 
         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-          On Android 10+ (API 29+), Android requires users to explicitly grant the <code>ROLE_CALL_SCREENING</code> default app role before the OS routes incoming telecom calls to <code>CallScreeningService</code>.
+          On Android 10+ (API 29+), Android requires users to grant <code>ROLE_CALL_SCREENING</code> for pre-ring spam blocking.
         </p>
 
         {roleMessage && (
@@ -83,7 +132,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
           <button
             onClick={handleRequestRole}
             disabled={isRequestingRole}
-            className="btn-primary"
+            className="btn-secondary"
             style={{ width: '100%', padding: '10px' }}
           >
             <ShieldCheck size={16} />
@@ -113,7 +162,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
             }}
           >
             <ExternalLink size={16} />
-            <span>Open Phone Default Apps Settings</span>
+            <span>Open Android Default Apps Settings</span>
           </button>
         </div>
       </div>
