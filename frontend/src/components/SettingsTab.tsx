@@ -79,15 +79,43 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
           </div>
         )}
 
-        <button
-          onClick={handleRequestRole}
-          disabled={isRequestingRole}
-          className="btn-primary"
-          style={{ width: '100%', padding: '10px' }}
-        >
-          <ShieldCheck size={16} />
-          <span>{roleGranted ? 'Re-verify Screening Role' : 'Request Screening Role (RoleManager)'}</span>
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button
+            onClick={handleRequestRole}
+            disabled={isRequestingRole}
+            className="btn-primary"
+            style={{ width: '100%', padding: '10px' }}
+          >
+            <ShieldCheck size={16} />
+            <span>{roleGranted ? 'Re-verify Screening Role' : 'Request Screening Role (RoleManager)'}</span>
+          </button>
+
+          <button
+            onClick={async () => {
+              const res = await CapacitorService.openDefaultAppsSettings();
+              setRoleMessage(res.message);
+              onRefreshRole();
+            }}
+            style={{
+              width: '100%',
+              padding: '10px',
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid var(--border-medium)',
+              borderRadius: 'var(--radius-md)',
+              color: '#fff',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              cursor: 'pointer'
+            }}
+          >
+            <ExternalLink size={16} />
+            <span>Open Phone Default Apps Settings</span>
+          </button>
+        </div>
       </div>
 
       {/* Language & Voice Assistant Settings */}

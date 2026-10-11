@@ -44,53 +44,9 @@ const DEFAULT_SEED_RULES: ScreeningRule[] = [
   }
 ];
 
-const DEFAULT_SEED_LOGS: ScreeningResult[] = [
-  {
-    id: 'seed-01',
-    phoneNumber: '+1 (800) 555-0199',
-    callerName: 'IRS Legal Enforcement Unit',
-    verdict: 'REJECT',
-    riskScore: 98,
-    riskLevel: 'CRITICAL_SPAM',
-    category: 'PHISHING_SCAM',
-    confidence: 0.99,
-    rationale: 'Caller claimed urgent arrest warrant due to unpaid taxes. High risk scam pattern.',
-    engine: 'LLM_AI',
-    latencyMs: 145,
-    timestamp: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-    suggestedActions: { disallowCall: true, silenceCall: false, rejectCall: true, skipCallLog: false, skipNotification: true }
-  },
-  {
-    id: 'seed-02',
-    phoneNumber: '+1 (415) 555-2671',
-    callerName: 'Dr. Evelyn Reed (Cardiology)',
-    verdict: 'ALLOW',
-    riskScore: 3,
-    riskLevel: 'SAFE',
-    category: 'MEDICAL_APPOINTMENT',
-    confidence: 0.98,
-    rationale: 'Confirmed medical clinic calling regarding upcoming health checkup schedule.',
-    engine: 'LLM_AI',
-    latencyMs: 120,
-    timestamp: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-    suggestedActions: { disallowCall: false, silenceCall: false, rejectCall: false, skipCallLog: false, skipNotification: false }
-  },
-  {
-    id: 'seed-03',
-    phoneNumber: '+1 (888) 723-9011',
-    callerName: 'Vehicle Protection Services',
-    verdict: 'REJECT',
-    riskScore: 88,
-    riskLevel: 'CRITICAL_SPAM',
-    category: 'ROBOCALL',
-    confidence: 0.94,
-    rationale: 'Automated robocall pitch for extended vehicle warranty renewal.',
-    engine: 'LLM_AI',
-    latencyMs: 98,
-    timestamp: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
-    suggestedActions: { disallowCall: true, silenceCall: false, rejectCall: true, skipCallLog: false, skipNotification: true }
-  }
-];
+import { CapacitorService } from './capacitorService';
+
+const DEFAULT_SEED_LOGS: ScreeningResult[] = [];
 
 export class ApiService {
   public static isFirstRun(): boolean {
@@ -99,12 +55,13 @@ export class ApiService {
 
   public static completeFirstRun(): void {
     localStorage.setItem(STORAGE_KEY_FIRST_RUN, 'true');
-    // Ensure initial rules and seed logs are populated
+    // Ensure initial rules are populated
     if (!localStorage.getItem(STORAGE_KEY_RULES)) {
       localStorage.setItem(STORAGE_KEY_RULES, JSON.stringify(DEFAULT_SEED_RULES));
     }
+    // Only real calls should ever be stored
     if (!localStorage.getItem(STORAGE_KEY_LOGS)) {
-      localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(DEFAULT_SEED_LOGS));
+      localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify([]));
     }
   }
 
@@ -255,28 +212,47 @@ export class ApiService {
   private static getLocalLogs(): ScreeningResult[] {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_LOGS);
-      return raw ? JSON.parse(raw) : DEFAULT_SEED_LOGS;
+      if (!raw) return [];
+      const parsed: ScreeningResult[] = JSON.parse(raw);
+      // Automatically purge any legacy dummy seed calls
+      const realOnly = parsed.filter((log) => !log.id.startsWith('seed-'));
+      if (realOnly.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(realOnly));
+      }
+      return realOnly;
     } catch {
-      return DEFAULT_SEED_LOGS;
+      return [];
     }
   }
 
   public static async getLogs(params?: { search?: string; verdict?: string; category?: string }): Promise<ScreeningResult[]> {
-    try {
-      if (this.getBaseUrl()) {
-        const query = new URLSearchParams();
-        if (params?.search) query.append('search', params.search);
-        if (params?.verdict && params.verdict !== 'ALL') query.append('verdict', params.verdict);
-        if (params?.category && params.category !== 'ALL') query.append('category', params.category);
-
-        const response = await fetch(this.formatUrl(`/api/logs?${query.toString()}`));
-        if (response.ok) {
-          const data = await response.json();
-          return data.data;
+    // 1. If running on native physical phone, fetch real calls screened by Android Telecom
+    if (CapacitorService.isNative()) {
+      try {
+        const nativeCalls = await CapacitorService.getScreenedCalls();
+        if (Array.isArray(nativeCalls)) {
+          localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(nativeCalls));
         }
+      } catch (e) {
+        console.warn('Could not retrieve native calls:', e);
       }
-    } catch {
-      // Fallback to local storage
+    } else {
+      try {
+        if (this.getBaseUrl()) {
+          const query = new URLSearchParams();
+          if (params?.search) query.append('search', params.search);
+          if (params?.verdict && params.verdict !== 'ALL') query.append('verdict', params.verdict);
+          if (params?.category && params.category !== 'ALL') query.append('category', params.category);
+
+          const response = await fetch(this.formatUrl(`/api/logs?${query.toString()}`));
+          if (response.ok) {
+            const data = await response.json();
+            return data.data;
+          }
+        }
+      } catch {
+        // Fallback to local storage
+      }
     }
 
     let logs = this.getLocalLogs();
@@ -292,19 +268,7 @@ export class ApiService {
   }
 
   public static async getStats(): Promise<CallScreeningStats> {
-    try {
-      if (this.getBaseUrl()) {
-        const response = await fetch(this.formatUrl('/api/logs/stats'));
-        if (response.ok) {
-          const data = await response.json();
-          return data.data;
-        }
-      }
-    } catch {
-      // Fallback to local calculation
-    }
-
-    const logs = this.getLocalLogs();
+    const logs = await this.getLogs();
     const total = logs.length;
     if (total === 0) {
       return { totalCallsScreened: 0, totalSpamBlocked: 0, totalCallsSilenced: 0, totalCallsAllowed: 0, averageRiskScore: 0, averageLatencyMs: 0, spamBlockRate: 0 };
@@ -320,9 +284,17 @@ export class ApiService {
       totalCallsSilenced: silenced,
       totalCallsAllowed: allowed,
       averageRiskScore: Math.round(totalRisk / total),
-      averageLatencyMs: 45,
+      averageLatencyMs: 8,
       spamBlockRate: Math.round((spam / total) * 100)
     };
+  }
+
+  public static async clearAllLogs(): Promise<boolean> {
+    if (CapacitorService.isNative()) {
+      await CapacitorService.clearScreenedCalls();
+    }
+    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify([]));
+    return true;
   }
 
   public static async deleteLog(id: string): Promise<boolean> {

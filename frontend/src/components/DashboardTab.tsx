@@ -26,6 +26,42 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Action Required: Telecom Role Warning Banner */}
+      {!roleGranted && (
+        <div
+          className="glass-card"
+          style={{
+            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%)',
+            border: '1px solid rgba(239, 68, 68, 0.45)',
+            padding: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <AlertTriangle size={24} color="var(--color-danger)" style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>
+                Default Call Screener Not Selected
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
+                Android requires AegisCall to be selected as your default <strong>Caller ID &amp; spam app</strong> so the phone OS sends incoming calls here.
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => onNavigateToTab('settings')}
+              className="btn-primary"
+              style={{ flex: 1, padding: '10px 14px', fontSize: '0.82rem', fontWeight: 700 }}
+            >
+              <ShieldCheck size={16} /> Enable Default App Now
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hero Stats Card */}
       <div
         className="glass-card"
@@ -164,10 +200,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         </div>
 
         {recentLogs.length === 0 ? (
-          <div className="glass-card" style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>
-            <PhoneIncoming size={28} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-            <p style={{ fontSize: '0.85rem' }}>No calls screened yet.</p>
-            <p style={{ fontSize: '0.75rem', marginTop: 4 }}>Use the Simulator to test live call screening.</p>
+          <div className="glass-card" style={{ textAlign: 'center', padding: 28, color: 'var(--text-muted)' }}>
+            <ShieldCheck size={36} color="var(--color-safe)" style={{ margin: '0 auto 10px', opacity: 0.85 }} />
+            <p style={{ fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>AegisCall is Active &amp; Guarding</p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
+              Waiting for incoming phone calls on this device. Real incoming calls will be automatically evaluated, defended, and recorded here.
+            </p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

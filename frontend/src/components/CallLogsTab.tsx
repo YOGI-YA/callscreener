@@ -98,9 +98,12 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
       </div>
 
       {filteredLogs.length === 0 ? (
-        <div className="glass-card" style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
-          <AlertCircle size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-          <p style={{ fontSize: '0.85rem' }}>No matching call screening records found.</p>
+        <div className="glass-card" style={{ textAlign: 'center', padding: 36, color: 'var(--text-muted)' }}>
+          <ShieldPlus size={36} color="var(--color-safe)" style={{ margin: '0 auto 10px', opacity: 0.85 }} />
+          <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>No Screened Calls Recorded</p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
+            When a phone call rings on this mobile, AegisCall screens the number in the background and displays the verdict, risk score, and action taken here.
+          </p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

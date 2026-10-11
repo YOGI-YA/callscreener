@@ -7,6 +7,7 @@ import android.util.Log
 import com.aegiscall.screener.models.IncomingCallRequest
 import com.aegiscall.screener.models.ScreeningData
 import com.aegiscall.screener.models.ScreeningResponse
+import com.aegiscall.screener.plugins.CallScreeningPlugin
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,6 +57,8 @@ class AiCallScreeningService : CallScreeningService() {
             Log.i(TAG, "Instant local rule match: ${fastRuleResult.verdict} (${fastRuleResult.rationale})")
             val callResponse = FastLocalRulesEngine.buildAndroidCallResponse(fastRuleResult)
             respondToCall(callDetails, callResponse)
+            CallHistoryStorage.saveCall(applicationContext, fastRuleResult)
+            CallScreeningPlugin.broadcastScreenedCall(fastRuleResult)
             return
         }
 
@@ -84,6 +87,8 @@ class AiCallScreeningService : CallScreeningService() {
             Log.i(TAG, "Physical On-Device Verdict: ${screeningResult.verdict} [Score: ${screeningResult.riskScore}] by ${screeningResult.engine}")
             val androidResponse = FastLocalRulesEngine.buildAndroidCallResponse(screeningResult)
             respondToCall(callDetails, androidResponse)
+            CallHistoryStorage.saveCall(applicationContext, screeningResult)
+            CallScreeningPlugin.broadcastScreenedCall(screeningResult)
         }
     }
 

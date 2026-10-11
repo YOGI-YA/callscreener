@@ -59,10 +59,29 @@ export const App: React.FC = () => {
       setShowAutoSetup(true);
     }
     refreshAllData();
+
+    // Listen for real incoming calls screened by Android Telecom in real time
+    const removeListener = CapacitorService.addCallScreenedListener((realCall) => {
+      console.log('Real incoming call screened on phone:', realCall);
+      setLogs((prev) => [realCall, ...prev]);
+      ApiService.getStats().then(setStats).catch(() => {});
+      setActiveResult(realCall);
+      setIncomingCall({
+        phoneNumber: realCall.phoneNumber,
+        callerName: realCall.callerName,
+        callPresentationMode: 'ALLOWED'
+      });
+    });
+
     const interval = setInterval(() => {
       ApiService.checkHealth().then(setBackendStatus).catch(() => {});
-    }, 15000);
-    return () => clearInterval(interval);
+      CapacitorService.checkRoleStatus().then((res) => setRoleGranted(res.roleGranted)).catch(() => {});
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+      if (removeListener) removeListener();
+    };
   }, []);
 
   // Trigger simulated incoming call
@@ -109,7 +128,8 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleClearAllLogs = () => {
+  const handleClearAllLogs = async () => {
+    await ApiService.clearAllLogs();
     setLogs([]);
     setStats({
       totalCallsScreened: 0,
