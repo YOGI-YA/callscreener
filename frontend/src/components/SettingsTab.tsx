@@ -102,7 +102,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Smartphone size={18} color="var(--accent-glow)" />
-            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Call Screening Role</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Android Telecom Role (Call Screening)</span>
           </div>
           <span
             style={{
