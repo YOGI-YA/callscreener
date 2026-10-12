@@ -181,15 +181,19 @@ export class CapacitorService {
     return { success: false };
   }
 
-  public static async screenCallWithAi(language: string = 'auto'): Promise<{ success: boolean }> {
+  public static async screenCallWithAi(language: string = 'auto', enableBotVoice: boolean = false): Promise<{ success: boolean }> {
     if (!this.isNative()) return { success: true };
     try {
       const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
-      if (plugin?.screenCallWithAi) return await plugin.screenCallWithAi({ language });
+      if (plugin?.screenCallWithAi) return await plugin.screenCallWithAi({ language, enableBotVoice });
     } catch (e) {
       console.error('screenCallWithAi failed:', e);
     }
     return { success: false };
+  }
+
+  public static async startSilentWordListening(language: string = 'auto'): Promise<{ success: boolean }> {
+    return this.screenCallWithAi(language, false);
   }
 
   public static async sendAiReply(replyText: string): Promise<{ success: boolean }> {
@@ -333,6 +337,20 @@ export class CapacitorService {
     } catch {
       // Ignore TTS errors
     }
+  }
+
+  public static addAudioLevelListener(callback: (data: { rmsDb: number }) => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('audioLevelChanged', (data: any) => callback(data));
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching audioLevelChanged listener:', e);
+    }
+    return null;
   }
 
   public static addCallAudioStateListener(callback: (data: { muted: boolean; speakerOn: boolean }) => void): (() => void) | null {

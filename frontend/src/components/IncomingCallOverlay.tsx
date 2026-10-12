@@ -3,7 +3,7 @@ import {
   Phone, PhoneOff, Volume2, VolumeX, Mic, MicOff,
   Sparkles, MessageSquare, Bot, User, Pause, Play,
   Send, PhoneCall, Radio, Grid, ChevronDown, Check,
-  AlertCircle
+  AlertCircle, Headphones, Activity, ShieldCheck, ShieldAlert
 } from 'lucide-react';
 import { IncomingCallPayload, ScreeningResult, DialogueTurn, ScreeningVerdict } from '../types';
 import { RiskBadge } from './RiskBadge';
@@ -65,6 +65,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
   const [liveAssessment, setLiveAssessment] = useState<{ category: string; riskScore: number; verdict: ScreeningVerdict } | null>(null);
   const [callerStreamText, setCallerStreamText] = useState<string>('');
   const [isCallerSpeaking, setIsCallerSpeaking] = useState<boolean>(false);
+  const [rmsLevel, setRmsLevel] = useState<number>(0);
+  const [showQuickReplies, setShowQuickReplies] = useState<boolean>(false);
   const [callEndedNotice, setCallEndedNotice] = useState<string | null>(null);
   const [customReplyInput, setCustomReplyInput] = useState<string>('');
 
@@ -151,6 +153,10 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       setTimeout(() => setIsAiSpeaking(false), 2400);
     });
 
+    const unlistenAudioLevel = CapacitorService.addAudioLevelListener((data) => {
+      setRmsLevel(data.rmsDb);
+    });
+
     const unlistenEnded = CapacitorService.addCallEndedListener(() => {
       setCallEndedNotice('Call Ended');
       setTimeout(() => onDismiss(), 600);
@@ -168,6 +174,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     return () => {
       if (unlistenTranscript) unlistenTranscript();
       if (unlistenAiSpeech) unlistenAiSpeech();
+      if (unlistenAudioLevel) unlistenAudioLevel();
       if (unlistenEnded) unlistenEnded();
       if (unlistenPickedUp) unlistenPickedUp();
       if (unlistenAudio) unlistenAudio();
@@ -181,57 +188,45 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Actions
-  const handleStartAiScreening = async () => {
+  // Actions: Start Live Word-by-Word Caller Listening
+  const handleStartLiveListening = async () => {
     CapacitorService.triggerHapticFeedback();
     setCallPhase('SCREENING');
+    setIsAiSpeaking(false);
+    setIsCallerSpeaking(true);
+    setDialogue([]); // Clean wiretap feed without bot messages
 
-    const firstTurn: DialogueTurn = {
-      sender: 'AI_ASSISTANT',
-      text: defaultGreeting,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    };
-    setDialogue([firstTurn]);
-    setIsAiSpeaking(true);
+    // Native telephony engine answers call silently, mutes user's mic uplink, NO bot voice speaks
+    await CapacitorService.startSilentWordListening(activeLang.toLowerCase());
 
-    // Native telephony engine transmits directly to caller on call line; only use webview audio if user enabled local listen-in
-    if (listenIn && !CapacitorService.isNative()) {
-      const ttsLang = activeLang === 'HI' ? 'hi-IN' : activeLang === 'HINGLISH' ? 'hi-IN' : 'en-US';
-      CapacitorService.speakOutLoud(defaultGreeting, ttsLang);
-    }
-    await CapacitorService.screenCallWithAi(activeLang.toLowerCase());
-
-    // If simulating or caller has simulated transcript, start stream after greeting
+    // If simulating or caller has simulated transcript, stream words ONE BY ONE
     if (incomingCall.simulatedAudioTranscript) {
-      setTimeout(() => {
-        setIsAiSpeaking(false);
-        setIsCallerSpeaking(true);
-        const fullText = incomingCall.simulatedAudioTranscript!;
-        let charIdx = 0;
-        const interval = setInterval(() => {
-          if (charIdx < fullText.length) {
-            charIdx += 4;
-            setCallerStreamText(fullText.substring(0, charIdx));
-          } else {
-            clearInterval(interval);
-            setIsCallerSpeaking(false);
-            setDialogue((prev) => [
-              ...prev,
-              {
-                sender: 'CALLER',
-                text: fullText,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-              }
-            ]);
-            setCallerStreamText('');
-            handleProcessCallerUtterance(fullText);
-          }
-        }, 40);
-      }, 1600);
-    } else {
-      setTimeout(() => setIsAiSpeaking(false), 2400);
+      const words = incomingCall.simulatedAudioTranscript.trim().split(/\s+/);
+      let wordIdx = 0;
+      let accumulated = '';
+      const interval = setInterval(() => {
+        if (wordIdx < words.length) {
+          accumulated += (wordIdx > 0 ? ' ' : '') + words[wordIdx];
+          setCallerStreamText(accumulated);
+          wordIdx++;
+        } else {
+          clearInterval(interval);
+          setIsCallerSpeaking(false);
+          setDialogue([
+            {
+              sender: 'CALLER',
+              text: accumulated,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            }
+          ]);
+          setCallerStreamText('');
+          handleProcessCallerUtterance(accumulated);
+        }
+      }, 150); // 150ms per word: fluid real-time speech cadence
     }
   };
+
+  const handleStartAiScreening = handleStartLiveListening;
 
   const handleAnswerDirectly = async () => {
     CapacitorService.triggerHapticFeedback();
@@ -288,7 +283,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     await CapacitorService.playDtmfTone(digit);
   };
 
-  // Real-time ChatGPT-style conversational turn generator (Gemini Flash / Local AI)
+  // Real-time AI Intelligence & Intent analysis (SILENT: Zero bot talking)
   const handleProcessCallerUtterance = async (callerText: string) => {
     if (!callerText.trim()) return;
     try {
@@ -310,12 +305,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       if (turn.suggestedSmartReplies && turn.suggestedSmartReplies.length > 0) {
         setDynamicChips(turn.suggestedSmartReplies);
       }
-
-      // Natural brief human pause (300ms) before AI speaks the response to caller
-      setTimeout(() => {
-        setIsAiThinking(false);
-        handleAiSpeakUtterance(turn.aiSpeech);
-      }, 350);
+      setIsAiThinking(false);
+      // NOTE: Strictly SILENT! No bot voice will talk to caller or out of user's phone.
     } catch {
       setIsAiThinking(false);
     }
@@ -629,68 +620,76 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                 gap: 6,
                 padding: '4px 14px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(16, 185, 129, 0.15)',
-                border: '1px solid rgba(16, 185, 129, 0.35)',
+                background: 'rgba(56, 189, 248, 0.15)',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
                 fontSize: '0.74rem',
-                color: 'var(--color-safe)',
+                color: '#38bdf8',
                 fontWeight: 700
               }}
             >
-              <Radio size={13} color="var(--color-safe)" />
-              <span>Transmitting AI Voice to Caller on Phone Line</span>
+              <Headphones size={13} color="#38bdf8" />
+              <span>Live Silent Wiretap • Transcribing Words Live</span>
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              {listenIn ? 'Local audio monitor active' : 'Your device is silent • Live transcript updating below'} • {activeLang === 'HI' ? 'हिंदी (Hindi)' : activeLang === 'HINGLISH' ? 'Hinglish' : 'English'}
+              Device is silent • Mic muted to caller • Words stream below
             </div>
           </div>
         )}
       </div>
 
       {/* ────────────────────────────────────────────────────────────────
-          PHASE 1: RINGING — Asks user: Answer, Decline, or Screen with AI
+          PHASE 1: RINGING — Asks user: Answer, Decline, or Live Listen Word-by-Word
          ──────────────────────────────────────────────────────────────── */}
       {callPhase === 'RINGING' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18, flex: 1, justifyContent: 'center' }}>
           {/* Decision Explanation Card */}
           <div
-            className="glass-card"
+            className="wiretap-hud-card"
             style={{
               padding: '16px 18px',
               textAlign: 'center',
-              background: 'rgba(15, 23, 42, 0.85)',
-              border: '1px solid var(--border-glow)'
+              border: '1px solid rgba(99, 102, 241, 0.4)'
             }}
           >
-            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--accent-glow)', marginBottom: 4 }}>
-              Choose How to Handle This Call
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+              <Headphones size={18} color="var(--accent-glow)" />
+              <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--accent-glow)' }}>
+                Live Silent Wiretap Screener
+              </span>
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.45, margin: 0 }}>
-              Pick up now, decline, or let <strong>AegisCall AI</strong> answer on your behalf while you see the live transcript.
+              Listen and read the caller's words <strong>one-by-one in real-time</strong>. Your phone stays silent, and no robot bot speaks.
             </p>
           </div>
 
           {/* 3 Clear Action Buttons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
-            {/* 1. Screen Call with AI (Primary Highlight) */}
+            {/* 1. Live Listen Word-by-Word (Hero Highlight) */}
             <button
-              onClick={handleStartAiScreening}
+              onClick={handleStartLiveListening}
               className="btn-primary"
               style={{
                 width: '100%',
-                padding: '16px',
+                padding: '16px 18px',
                 fontSize: '1.02rem',
                 fontWeight: 800,
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                boxShadow: '0 0 25px rgba(99, 102, 241, 0.45)',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)',
+                boxShadow: '0 0 28px rgba(99, 102, 241, 0.5)',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 10,
+                gap: 4,
                 borderRadius: 'var(--radius-lg)'
               }}
             >
-              <Bot size={22} />
-              <span>Screen Call with AI</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Headphones size={22} />
+                <span>Live Listen (Word-by-Word)</span>
+              </div>
+              <span style={{ fontSize: '0.72rem', opacity: 0.9, fontWeight: 500 }}>
+                Silently monitor & read words live • No robot bot speech
+              </span>
             </button>
 
             {/* 2. Decline and Answer Row */}
@@ -739,29 +738,149 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       )}
 
       {/* ────────────────────────────────────────────────────────────────
-          PHASE 2: SCREENING — AI talks on your behalf, live transcript
+          PHASE 2: SCREENING — Live Word-by-Word Wiretap Monitor (No Bot Voice)
          ──────────────────────────────────────────────────────────────── */}
       {callPhase === 'SCREENING' && (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 10, minHeight: 0 }}>
-          {/* Assessment Banner */}
+          {/* Top Live Wiretap Header */}
+          <div
+            className="wiretap-hud-card"
+            style={{
+              padding: '10px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexShrink: 0
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="live-rec-pill">
+                <div className="live-rec-dot" />
+                <span>LIVE WIRETAP</span>
+              </div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Mic Muted • No Bot Speaking
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => {
+                  CapacitorService.triggerHapticFeedback();
+                  setListenIn(!listenIn);
+                }}
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  color: listenIn ? '#38bdf8' : 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                {listenIn ? <Volume2 size={13} color="#38bdf8" /> : <VolumeX size={13} />}
+                <span>{listenIn ? 'Ear Monitor On' : 'Silent Mode'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Dynamic 24-band Audio Equalizer */}
+          <div className="spectrum-equalizer" style={{ flexShrink: 0 }}>
+            {Array.from({ length: 24 }).map((_, barIdx) => {
+              const baseHeight = isCallerSpeaking
+                ? Math.min(32, Math.max(6, Math.abs(rmsLevel * 2) + Math.sin(barIdx * 0.8 + Date.now() / 200) * 12 + 10))
+                : 4;
+              return (
+                <div
+                  key={barIdx}
+                  className="spectrum-bar"
+                  style={{
+                    height: `${baseHeight}px`,
+                    opacity: isCallerSpeaking ? 0.9 : 0.3
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Hero Word-by-Word Live Teleprompter Stream */}
+          <div
+            className="wiretap-hud-card"
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '14px',
+              minHeight: 180,
+              overflowY: 'auto'
+            }}
+          >
+            {/* Teleprompter Metrics Bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, letterSpacing: '0.04em' }}>
+                <Activity size={13} />
+                CALLER REAL-TIME STREAM
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.68rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                <span>WORDS: <strong style={{ color: '#fff' }}>{((dialogue.filter(d => d.sender === 'CALLER').map(d => d.text).join(' ') + ' ' + callerStreamText).trim().split(/\s+/).filter(Boolean).length)}</strong></span>
+                <span>LANG: <strong style={{ color: '#38bdf8' }}>{activeLang}</strong></span>
+              </div>
+            </div>
+
+            {/* Word-by-Word Flowing Text Box */}
+            <div style={{ flex: 1, fontSize: '1.02rem', lineHeight: 1.6, color: '#f8fafc', padding: '4px 2px' }}>
+              {/* Prior confirmed turns */}
+              {dialogue.filter(d => d.sender === 'CALLER').map((turn, tIdx) => (
+                <div key={tIdx} style={{ marginBottom: 8, opacity: 0.85 }}>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginRight: 6 }}>[{turn.timestamp}]</span>
+                  <span>{turn.text}</span>
+                </div>
+              ))}
+
+              {/* Live currently streaming utterance (words one by one) */}
+              {callerStreamText ? (
+                <div>
+                  {callerStreamText.split(/\s+/).map((word, wIdx, arr) => (
+                    <span
+                      key={wIdx}
+                      className={`streaming-word ${wIdx === arr.length - 1 ? 'latest' : ''}`}
+                    >
+                      {word}
+                    </span>
+                  ))}
+                  <span className="streaming-caret" />
+                </div>
+              ) : dialogue.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
+                  <div className="wave-bar" style={{ height: 12, width: 3 }} />
+                  <span>Listening to caller audio... words will stream here one by one in real time.</span>
+                </div>
+              ) : null}
+
+              <div ref={dialogueEndRef} />
+            </div>
+          </div>
+
+          {/* Live Caller Intent & Risk Assessment Banner */}
           {(liveAssessment || screeningResult) && (
             <div
               className="glass-card"
               style={{
-                padding: '8px 12px',
+                padding: '10px 14px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: 'rgba(21, 30, 49, 0.9)',
+                background: 'rgba(21, 30, 49, 0.95)',
+                border: '1px solid rgba(255,255,255,0.08)',
                 flexShrink: 0
               }}
             >
               <div>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Caller Intent
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800 }}>
+                  DETECTED INTENT
                 </div>
-                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>
-                  {(liveAssessment?.category || screeningResult?.category || 'Analyzing').replace('_', ' ')}
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff', marginTop: 1 }}>
+                  {(liveAssessment?.category || screeningResult?.category || 'Analyzing Speech').replace('_', ' ')}
                 </div>
               </div>
               <RiskBadge
@@ -772,115 +891,22 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
             </div>
           )}
 
-          {/* Real-time Dialogue Transcript */}
-          <div
-            className="glass-card"
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              background: 'rgba(10, 15, 26, 0.95)',
-              border: '1px solid var(--border-medium)',
-              padding: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-              minHeight: 180
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <MessageSquare size={13} /> Live Conversation Transcript
-              </span>
-              {(isAiSpeaking || isCallerSpeaking) && (
-                <div className="audio-wave-container" style={{ height: 18 }}>
-                  <div className="wave-bar" />
-                  <div className="wave-bar" />
-                  <div className="wave-bar" />
-                </div>
-              )}
-            </div>
-
-            {dialogue.map((turn, idx) => {
-              const isAi = turn.sender === 'AI_ASSISTANT';
-              return (
-                <div
-                  key={idx}
-                  style={{
-                    alignSelf: isAi ? 'flex-start' : 'flex-end',
-                    maxWidth: '85%',
-                    background: isAi ? 'rgba(99, 102, 241, 0.16)' : 'rgba(255, 255, 255, 0.08)',
-                    border: `1px solid ${isAi ? 'rgba(99, 102, 241, 0.38)' : 'rgba(255, 255, 255, 0.12)'}`,
-                    padding: '8px 12px',
-                    borderRadius: isAi ? '14px 14px 14px 2px' : '14px 14px 2px 14px',
-                    fontSize: '0.8rem',
-                    lineHeight: 1.4
-                  }}
-                >
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: isAi ? 'var(--accent-glow)' : 'var(--text-secondary)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {isAi ? <Bot size={11} /> : <User size={11} />}
-                    <span>{isAi ? 'AegisCall AI (Speaking for You)' : 'Caller'}</span>
-                  </div>
-                  <div style={{ color: '#fff' }}>"{turn.text}"</div>
-                </div>
-              );
-            })}
-
-            {isCallerSpeaking && callerStreamText && (
-              <div
-                style={{
-                  alignSelf: 'flex-end',
-                  maxWidth: '85%',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  padding: '8px 12px',
-                  borderRadius: '14px 14px 2px 14px',
-                  fontSize: '0.8rem',
-                  lineHeight: 1.4,
-                  borderLeft: '3px solid var(--accent-glow)'
-                }}
-              >
-                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <User size={11} />
-                  <span>Caller Speaking...</span>
-                </div>
-                <div style={{ color: '#fff' }}>"{callerStreamText}"</div>
-              </div>
-            )}
-
-            {isAiThinking && (
-              <div
-                style={{
-                  alignSelf: 'flex-start',
-                  maxWidth: '85%',
-                  background: 'rgba(99, 102, 241, 0.1)',
-                  border: '1px dashed rgba(99, 102, 241, 0.4)',
-                  padding: '8px 12px',
-                  borderRadius: '14px 14px 14px 2px',
-                  fontSize: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  color: 'var(--accent-glow)'
-                }}
-              >
-                <div className="audio-wave-container" style={{ height: 14 }}>
-                  <div className="wave-bar" />
-                  <div className="wave-bar" />
-                  <div className="wave-bar" />
-                </div>
-                <span>✨ AI formulating response...</span>
-              </div>
-            )}
-
-            <div ref={dialogueEndRef} />
+          {/* Optional Quick Reply chips (Collapsed by default, send only if user taps) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', flexShrink: 0 }}>
+            <button
+              onClick={() => setShowQuickReplies(!showQuickReplies)}
+              style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}
+            >
+              <Sparkles size={12} color="var(--accent-glow)" />
+              <span>{showQuickReplies ? 'Hide Quick Replies' : 'Optional Responses'}</span>
+            </button>
+            <span style={{ fontSize: '0.68rem', color: 'var(--color-safe)', fontWeight: 700 }}>
+              🛡️ Phone Mic Muted to Caller
+            </span>
           </div>
 
-          {/* Quick Smart Reply Chips */}
-          <div style={{ flexShrink: 0 }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Sparkles size={12} color="var(--accent-glow)" /> Quick Responses (AI speaks to caller):
-            </div>
-            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+          {showQuickReplies && (
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
               {getSmartChips().map((chip, idx) => (
                 <button
                   key={idx}
@@ -898,45 +924,23 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                 </button>
               ))}
             </div>
-          </div>
+          )}
 
-          {/* Custom Reply Input Form */}
-          <form onSubmit={handleSendCustomInstruction} style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <input
-              type="text"
-              placeholder="Tell caller anything via AI..."
-              value={customReplyInput}
-              onChange={(e) => setCustomReplyInput(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '9px 12px',
-                background: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid var(--border-medium)',
-                borderRadius: 'var(--radius-md)',
-                color: '#fff',
-                fontSize: '0.82rem',
-                outline: 'none'
-              }}
-            />
-            <button
-              type="submit"
-              disabled={!customReplyInput.trim()}
-              className="btn-primary"
-              style={{ padding: '9px 14px', borderRadius: 'var(--radius-md)', opacity: customReplyInput.trim() ? 1 : 0.5 }}
-            >
-              <Send size={15} />
-            </button>
-          </form>
-
-          {/* Takeover and Hang up buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 10, marginTop: 4, flexShrink: 0 }}>
+          {/* Primary Action Buttons: Take Over & Answer / Drop Call */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, marginTop: 4, flexShrink: 0 }}>
             <button
               onClick={handleHangUp}
               className="btn-danger"
-              style={{ justifyContent: 'center', padding: '14px', gap: 6, fontWeight: 700, borderRadius: 'var(--radius-md)' }}
+              style={{
+                justifyContent: 'center',
+                padding: '16px',
+                gap: 6,
+                fontWeight: 800,
+                borderRadius: 'var(--radius-lg)'
+              }}
             >
-              <PhoneOff size={18} />
-              <span>Hang Up</span>
+              <PhoneOff size={20} />
+              <span>Drop Call</span>
             </button>
 
             <button
@@ -945,19 +949,19 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                 background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                 border: 'none',
                 color: '#fff',
-                borderRadius: 'var(--radius-md)',
+                borderRadius: 'var(--radius-lg)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 8,
-                padding: '14px',
+                gap: 10,
+                padding: '16px',
                 fontWeight: 800,
-                fontSize: '0.95rem',
-                boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)'
+                fontSize: '1rem',
+                boxShadow: '0 0 25px rgba(16, 185, 129, 0.45)'
               }}
             >
-              <PhoneCall size={20} />
-              <span>Answer (Take Over)</span>
+              <Phone size={22} />
+              <span>Answer & Talk</span>
             </button>
           </div>
         </div>

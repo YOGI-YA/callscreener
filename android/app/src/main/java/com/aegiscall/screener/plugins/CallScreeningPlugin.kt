@@ -85,6 +85,15 @@ class CallScreeningPlugin : Plugin() {
             }
         }
 
+        fun broadcastAudioLevel(rmsDb: Float) {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("rmsDb", rmsDb)
+                }
+                plugin.notifyListeners("audioLevelChanged", js, true)
+            }
+        }
+
         fun broadcastAiSpeech(text: String) {
             instance?.let { plugin ->
                 val js = JSObject().apply {
@@ -233,7 +242,16 @@ class CallScreeningPlugin : Plugin() {
     @PluginMethod
     fun screenCallWithAi(call: PluginCall) {
         val language = call.getString("language") ?: "auto"
-        AegisInCallService.startAiScreening(language)
+        val enableBotVoice = call.getBoolean("enableBotVoice", false) ?: false
+        AegisInCallService.startAiScreening(language, enableBotVoice)
+        val ret = JSObject().apply { put("success", true) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun startSilentCallListener(call: PluginCall) {
+        val language = call.getString("language") ?: "auto"
+        AegisInCallService.startAiScreening(language, false)
         val ret = JSObject().apply { put("success", true) }
         call.resolve(ret)
     }

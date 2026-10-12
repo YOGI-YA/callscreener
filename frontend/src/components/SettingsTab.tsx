@@ -167,6 +167,70 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
         </div>
       </div>
 
+      {/* Screener Interaction Mode: Silent Word-by-Word vs Bot Voice */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 10, border: '1px solid var(--border-glow)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: '1.1rem' }}>🎧</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Live Screener Interaction Mode</span>
+          </div>
+          <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.15)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontWeight: 700 }}>
+            Active
+          </span>
+        </div>
+
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+          Control whether AegisCall silently transcribes words in real time or speaks out loud.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+          {[
+            {
+              id: 'SILENT_LISTENER',
+              title: '🎧 Silent Word-by-Word Wiretap (Recommended)',
+              desc: 'Listen and read caller words one-by-one in real-time. No bot speech. Your phone stays silent until you tap Answer.'
+            },
+            {
+              id: 'BOT_VOICE',
+              title: '🤖 Automated AI Bot Speech',
+              desc: 'AI speaks out loud to the caller with conversational voice responses.'
+            }
+          ].map((mode) => {
+            const currentMode = localStorage.getItem('aegis_screener_mode') || 'SILENT_LISTENER';
+            const isSelected = currentMode === mode.id;
+            return (
+              <button
+                key={mode.id}
+                onClick={() => {
+                  localStorage.setItem('aegis_screener_mode', mode.id);
+                  onRefreshRole();
+                }}
+                className="btn-secondary"
+                style={{
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  textAlign: 'left',
+                  gap: 4,
+                  borderColor: isSelected ? 'var(--accent-glow)' : 'var(--border-subtle)',
+                  background: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                  boxShadow: isSelected ? '0 0 15px rgba(99, 102, 241, 0.2)' : 'none'
+                }}
+              >
+                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: isSelected ? '#fff' : 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <span>{mode.title}</span>
+                  {isSelected && <span style={{ color: '#10b981', fontSize: '0.75rem' }}>● Selected</span>}
+                </div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+                  {mode.desc}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Language & Voice Assistant Settings */}
       <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

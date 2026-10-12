@@ -42,10 +42,17 @@ class AegisInCallService : InCallService() {
             CallScreeningPlugin.broadcastCallEnded()
         }
 
-        fun startAiScreening(language: String = "auto") {
+        fun startAiScreening(language: String = "auto", enableBotVoice: Boolean = false) {
             isScreeningActive = true
             // Answer the call programmatically to screen it
             activeCall?.answer(VideoProfile.STATE_AUDIO_ONLY)
+
+            // MUTE the user's mic uplink so caller cannot hear user room sounds during wiretap screening
+            try {
+                serviceInstance?.setMuted(true)
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not set initial mute: ${e.message}")
+            }
 
             // Keep audio in earpiece mode during screening so it does NOT blast
             // out of the device's loudspeaker at the user in the room.
@@ -55,8 +62,8 @@ class AegisInCallService : InCallService() {
                 Log.w(TAG, "Could not set audio route for screening: ${e.message}")
             }
 
-            // Start AI voice conversation (TTS + STT)
-            AiVoiceScreeningEngine.startScreeningConversation(appContext, language)
+            // Start word-by-word listener (with bot voice disabled by default)
+            AiVoiceScreeningEngine.startScreeningConversation(appContext, language, enableBotVoice)
 
             // Show ongoing screening notification
             activeCall?.let { call ->
@@ -75,13 +82,15 @@ class AegisInCallService : InCallService() {
         fun pickupCall() {
             isScreeningActive = false
             AiVoiceScreeningEngine.stop()
-            // Reset to earpiece for private ear conversation when user takes over
+            // Unmute mic so user can immediately talk to caller
             try {
+                serviceInstance?.setMuted(false)
                 serviceInstance?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
             } catch (e: Exception) {
-                Log.w(TAG, "Could not reset audio route to earpiece: ${e.message}")
+                Log.w(TAG, "Could not reset audio route to earpiece or unmute: ${e.message}")
             }
             CallScreeningPlugin.broadcastCallPickedUp()
+            CallScreeningPlugin.broadcastCallAudioState(muted = false, speakerOn = false)
 
             // Show ongoing connected call notification
             activeCall?.let { call ->

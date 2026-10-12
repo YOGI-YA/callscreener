@@ -132,7 +132,10 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
         }
     }
 
-    fun startScreeningConversation(context: Context, language: String = "auto") {
+    var isBotVoiceEnabled: Boolean = false
+
+    fun startScreeningConversation(context: Context, language: String = "auto", enableBotVoice: Boolean = false) {
+        isBotVoiceEnabled = enableBotVoice
         currentLanguage = when (language.lowercase()) {
             "hi" -> "hi-IN"
             "hinglish" -> "hi-IN"
@@ -141,25 +144,44 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
 
         initialize(context)
 
-        val targetLocale = try {
-            Locale.forLanguageTag(currentLanguage)
+        // Always stop any pending TTS to guarantee silence on device
+        try {
+            tts?.stop()
         } catch (e: Exception) {
-            Locale.US
-        }
-        applyHighFidelityVoice(targetLocale)
-
-        val greeting = when (language.lowercase()) {
-            "hi" -> "नमस्ते। मैं इस कॉल की जांच करने वाला एआई सहायक हूं। कृपया अपना नाम और कॉल करने का कारण बताएं।"
-            "hinglish" -> "Hello, main AI assistant bol raha hoon. Please apna naam aur call karne ka reason bataiye."
-            else -> "Hello, I am the AI assistant screening this call on the recipient's behalf. Please state your name and the reason you are calling."
+            // ignore
         }
 
-        speakAiResponse(context, greeting)
+        if (enableBotVoice) {
+            val targetLocale = try {
+                Locale.forLanguageTag(currentLanguage)
+            } catch (e: Exception) {
+                Locale.US
+            }
+            applyHighFidelityVoice(targetLocale)
+
+            val greeting = when (language.lowercase()) {
+                "hi" -> "नमस्ते। मैं इस कॉल की जांच करने वाला एआई सहायक हूं। कृपया अपना नाम और कॉल करने का कारण बताएं।"
+                "hinglish" -> "Hello, main AI assistant bol raha hoon. Please apna naam aur call karne ka reason bataiye."
+                else -> "Hello, I am the AI assistant screening this call on the recipient's behalf. Please state your name and the reason you are calling."
+            }
+
+            speakAiResponse(context, greeting)
+        } else {
+            // SILENT LISTENER MODE (Default / Next-Level wiretap monitor)
+            // No bot speaks. Local user phone is completely quiet.
+            // Immediately start listening for caller's words one by one.
+            Log.i(TAG, "Silent Word-by-Word Caller Listener activated. No bot speech.")
+            startListeningForCaller()
+        }
     }
 
     fun speakAiResponse(context: Context, message: String) {
         if (!AegisInCallService.isScreeningActive) {
             Log.i(TAG, "Screening not active, skipping speakAiResponse")
+            return
+        }
+        if (!isBotVoiceEnabled) {
+            Log.i(TAG, "Bot voice disabled: silent listener mode active. Skipping TTS.")
             return
         }
         initialize(context)
@@ -170,7 +192,6 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
         if (isTtsReady) {
             val utteranceId = "ai_${System.currentTimeMillis()}"
             val params = Bundle().apply {
-                // KEY_PARAM_STREAM: STREAM_VOICE_CALL routes into the telephony audio path
                 putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
                 putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId)
             }
@@ -182,11 +203,11 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                     CallScreeningPlugin.broadcastAiSpeech(message)
                     startListeningForCaller()
                 }
-            }, 2000)
+            }, 1000)
         }
     }
 
-    private fun startListeningForCaller() {
+    fun startListeningForCaller() {
         mainHandler.post {
             if (!AegisInCallService.isScreeningActive) return@post
             try {
@@ -203,7 +224,10 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                             isListening = true
                         }
                         override fun onBeginningOfSpeech() {}
-                        override fun onRmsChanged(rmsdB: Float) {}
+                        override fun onRmsChanged(rmsdB: Float) {
+                            // Broadcast audio volume / dB levels to the UI for live equalizer
+                            CallScreeningPlugin.broadcastAudioLevel(rmsdB)
+                        }
                         override fun onBufferReceived(buffer: ByteArray?) {}
                         override fun onEndOfSpeech() {
                             isListening = false
@@ -213,7 +237,7 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                             Log.w(TAG, "STT error code: $error")
                             // Restart STT if still actively screening
                             if (AegisInCallService.isScreeningActive) {
-                                mainHandler.postDelayed({ startListeningForCaller() }, 1200)
+                                mainHandler.postDelayed({ startListeningForCaller() }, 800)
                             }
                         }
                         override fun onResults(results: Bundle?) {
@@ -224,9 +248,9 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                                 Log.i(TAG, "Caller said: $text")
                                 CallScreeningPlugin.broadcastCallerTranscript(text, isFinal = true)
                             }
-                            // Keep listening during active screening
+                            // Keep listening continuously during active screening
                             if (AegisInCallService.isScreeningActive) {
-                                mainHandler.postDelayed({ startListeningForCaller() }, 800)
+                                mainHandler.postDelayed({ startListeningForCaller() }, 200)
                             }
                         }
                         override fun onPartialResults(partialResults: Bundle?) {
