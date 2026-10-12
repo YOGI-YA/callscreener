@@ -15,6 +15,7 @@ import androidx.activity.result.ActivityResult
 import com.aegiscall.screener.models.ScreeningData
 import com.aegiscall.screener.telecom.AegisInCallService
 import com.aegiscall.screener.telecom.CallHistoryStorage
+import com.aegiscall.screener.telecom.CallRecorderManager
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -139,6 +140,17 @@ class CallScreeningPlugin : Plugin() {
                     put("speakerOn", speakerOn)
                 }
                 plugin.notifyListeners("callAudioStateChanged", js, true)
+            }
+        }
+
+        fun broadcastRecordingSaved(filePath: String) {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("saved", true)
+                    put("filePath", filePath)
+                    put("location", "Recordings/Music")
+                }
+                plugin.notifyListeners("callRecordingSaved", js, true)
             }
         }
 
@@ -312,6 +324,39 @@ class CallScreeningPlugin : Plugin() {
         val hold = call.getBoolean("hold", false) ?: false
         AegisInCallService.holdCall(hold)
         val ret = JSObject().apply { put("success", true); put("hold", hold) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun startCallRecording(call: PluginCall) {
+        val phone = call.getString("phoneNumber")
+            ?: AegisInCallService.activeCall?.details?.handle?.schemeSpecificPart
+            ?: "Unknown"
+        val started = CallRecorderManager.startRecording(context, phone)
+        val ret = JSObject().apply {
+            put("success", started)
+            put("isRecording", started)
+        }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun stopCallRecording(call: PluginCall) {
+        val savedPath = CallRecorderManager.stopRecording(context)
+        val ret = JSObject().apply {
+            put("success", true)
+            put("isRecording", false)
+            put("filePath", savedPath ?: "")
+            put("savedTo", "Recordings/Music")
+        }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun isCallRecording(call: PluginCall) {
+        val ret = JSObject().apply {
+            put("isRecording", CallRecorderManager.isRecording)
+        }
         call.resolve(ret)
     }
 

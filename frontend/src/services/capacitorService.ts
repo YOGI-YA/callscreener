@@ -274,6 +274,69 @@ export class CapacitorService {
     return { success: false };
   }
 
+  // --- CALL AUDIO RECORDING (Saves to Recordings / Music) ---
+
+  public static async startCallRecording(phoneNumber?: string): Promise<{ success: boolean; isRecording: boolean }> {
+    if (!this.isNative()) {
+      localStorage.setItem('mock_is_recording', 'true');
+      return { success: true, isRecording: true };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.startCallRecording) {
+        return await plugin.startCallRecording({ phoneNumber });
+      }
+    } catch (e) {
+      console.error('startCallRecording failed:', e);
+    }
+    return { success: false, isRecording: false };
+  }
+
+  public static async stopCallRecording(): Promise<{ success: boolean; isRecording: boolean; filePath?: string; savedTo?: string }> {
+    if (!this.isNative()) {
+      localStorage.setItem('mock_is_recording', 'false');
+      return { success: true, isRecording: false, savedTo: 'Recordings/Music' };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.stopCallRecording) {
+        return await plugin.stopCallRecording();
+      }
+    } catch (e) {
+      console.error('stopCallRecording failed:', e);
+    }
+    return { success: false, isRecording: false };
+  }
+
+  public static async isCallRecording(): Promise<{ isRecording: boolean }> {
+    if (!this.isNative()) {
+      return { isRecording: localStorage.getItem('mock_is_recording') === 'true' };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.isCallRecording) {
+        return await plugin.isCallRecording();
+      }
+    } catch (e) {
+      console.error('isCallRecording failed:', e);
+    }
+    return { isRecording: false };
+  }
+
+  public static addRecordingSavedListener(callback: (data: { saved: boolean; filePath: string; location: string }) => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('callRecordingSaved', (data: any) => callback(data));
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching callRecordingSaved listener:', e);
+    }
+    return null;
+  }
+
   // Web Audio DTMF synthesizer for authentic keypad dial sounds
   private static audioCtx: AudioContext | null = null;
   public static playWebDtmfTone(digit: string): void {

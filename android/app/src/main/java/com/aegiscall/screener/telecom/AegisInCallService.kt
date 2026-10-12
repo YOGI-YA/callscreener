@@ -33,6 +33,10 @@ class AegisInCallService : InCallService() {
         fun rejectCall() {
             isScreeningActive = false
             AiVoiceScreeningEngine.stop()
+            if (CallRecorderManager.isRecording) {
+                val saved = CallRecorderManager.stopRecording(appContext)
+                if (saved != null) CallScreeningPlugin.broadcastRecordingSaved(saved)
+            }
             try {
                 serviceInstance?.let { CallNotificationManager.cancelCallNotifications(it) }
             } catch (e: Exception) {
@@ -201,6 +205,10 @@ class AegisInCallService : InCallService() {
                     Call.STATE_DISCONNECTED -> {
                         isScreeningActive = false
                         AiVoiceScreeningEngine.stop()
+                        if (CallRecorderManager.isRecording) {
+                            val saved = CallRecorderManager.stopRecording(this@AegisInCallService)
+                            if (saved != null) CallScreeningPlugin.broadcastRecordingSaved(saved)
+                        }
                         CallNotificationManager.cancelCallNotifications(this@AegisInCallService)
                         CallScreeningPlugin.broadcastCallEnded()
                         activeCall = null
@@ -215,6 +223,10 @@ class AegisInCallService : InCallService() {
         Log.i(TAG, "Call Removed")
         isScreeningActive = false
         AiVoiceScreeningEngine.stop()
+        if (CallRecorderManager.isRecording) {
+            val saved = CallRecorderManager.stopRecording(this)
+            if (saved != null) CallScreeningPlugin.broadcastRecordingSaved(saved)
+        }
         CallNotificationManager.cancelCallNotifications(this)
         CallScreeningPlugin.broadcastCallEnded()
         if (activeCall == call) {

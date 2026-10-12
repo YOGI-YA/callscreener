@@ -67,6 +67,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
   const [isCallerSpeaking, setIsCallerSpeaking] = useState<boolean>(false);
   const [rmsLevel, setRmsLevel] = useState<number>(0);
   const [showQuickReplies, setShowQuickReplies] = useState<boolean>(false);
+  const [recordingNotice, setRecordingNotice] = useState<string | null>(null);
   const [callEndedNotice, setCallEndedNotice] = useState<string | null>(null);
   const [customReplyInput, setCustomReplyInput] = useState<string>('');
 
@@ -157,6 +158,12 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       setRmsLevel(data.rmsDb);
     });
 
+    const unlistenRecordingSaved = CapacitorService.addRecordingSavedListener((data) => {
+      setIsRecording(false);
+      setRecordingNotice(`Call recording saved to ${data.location || 'Recordings/Music'}`);
+      setTimeout(() => setRecordingNotice(null), 4000);
+    });
+
     const unlistenEnded = CapacitorService.addCallEndedListener(() => {
       setCallEndedNotice('Call Ended');
       setTimeout(() => onDismiss(), 600);
@@ -175,6 +182,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       if (unlistenTranscript) unlistenTranscript();
       if (unlistenAiSpeech) unlistenAiSpeech();
       if (unlistenAudioLevel) unlistenAudioLevel();
+      if (unlistenRecordingSaved) unlistenRecordingSaved();
       if (unlistenEnded) unlistenEnded();
       if (unlistenPickedUp) unlistenPickedUp();
       if (unlistenAudio) unlistenAudio();
@@ -248,8 +256,29 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     await CapacitorService.pickupCall();
   };
 
+  const handleToggleRecording = async () => {
+    CapacitorService.triggerHapticFeedback();
+    if (!isRecording) {
+      const res = await CapacitorService.startCallRecording(incomingCall.phoneNumber);
+      if (res.success) {
+        setIsRecording(true);
+        setRecordingNotice('🔴 Recording active • Will save to Android Recordings / Music');
+        setTimeout(() => setRecordingNotice(null), 3500);
+      }
+    } else {
+      const res = await CapacitorService.stopCallRecording();
+      setIsRecording(false);
+      setRecordingNotice(`Call recording saved to ${res.savedTo || 'Recordings/Music'}`);
+      setTimeout(() => setRecordingNotice(null), 4000);
+    }
+  };
+
   const handleHangUp = async () => {
     CapacitorService.triggerHapticFeedback();
+    if (isRecording) {
+      await CapacitorService.stopCallRecording();
+      setIsRecording(false);
+    }
     await CapacitorService.rejectCall();
     setCallEndedNotice(`Call Ended • ${formatTimer(callDuration)}`);
     setTimeout(() => onDismiss(), 800);
@@ -558,6 +587,24 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
         </div>
       )}
 
+      {recordingNotice && (
+        <div
+          style={{
+            margin: '8px 0',
+            padding: '10px 14px',
+            textAlign: 'center',
+            background: 'rgba(16, 185, 129, 0.2)',
+            border: '1px solid rgba(16, 185, 129, 0.45)',
+            borderRadius: 'var(--radius-md)',
+            color: '#6ee7b7',
+            fontSize: '0.82rem',
+            fontWeight: 700
+          }}
+        >
+          {recordingNotice}
+        </div>
+      )}
+
       {/* ────────────────────────────────────────────────────────────────
           CALLER AVATAR & INFO SECTION
          ──────────────────────────────────────────────────────────────── */}
@@ -763,7 +810,27 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={handleToggleRecording}
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  color: isRecording ? '#ef4444' : 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: isRecording ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius-full)',
+                  border: `1px solid ${isRecording ? 'rgba(239, 68, 68, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`
+                }}
+                title="Save recording to Android Recordings / Music"
+              >
+                <Radio size={13} color={isRecording ? '#ef4444' : 'currentColor'} />
+                <span>{isRecording ? 'Recording' : 'Record'}</span>
+              </button>
+
               <button
                 onClick={() => {
                   CapacitorService.triggerHapticFeedback();
@@ -1344,10 +1411,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
               {/* 6. Record */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                 <button
-                  onClick={() => {
-                    CapacitorService.triggerHapticFeedback();
-                    setIsRecording(!isRecording);
-                  }}
+                  onClick={handleToggleRecording}
                   style={{
                     width: 62,
                     height: 62,
