@@ -439,6 +439,41 @@ export class CapacitorService {
     return null;
   }
 
+  public static addCallRestoredListener(callback: (data: { phoneNumber: string; callerName: string; isScreeningActive: boolean; callState: string }) => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('callRestored', (data: any) => callback(data));
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching callRestored listener:', e);
+    }
+    return null;
+  }
+
+  public static async getCurrentCall(): Promise<{
+    hasActiveCall: boolean;
+    phoneNumber?: string;
+    callerName?: string;
+    callState?: string;
+    isScreeningActive?: boolean;
+  }> {
+    if (!this.isNative()) {
+      return { hasActiveCall: false, isScreeningActive: false };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.getCurrentCall) {
+        return await plugin.getCurrentCall();
+      }
+    } catch (e) {
+      console.warn('getCurrentCall failed:', e);
+    }
+    return { hasActiveCall: false, isScreeningActive: false };
+  }
+
   // --- CONTACTS ---
 
   public static async getContacts(): Promise<{ id: string; name: string; number: string }[]> {

@@ -132,6 +132,30 @@ class CallScreeningPlugin : Plugin() {
                 plugin.notifyListeners("callAudioStateChanged", js, true)
             }
         }
+
+        fun notifyCallRestored() {
+            instance?.let { plugin ->
+                val activeCall = AegisInCallService.activeCall
+                if (activeCall != null) {
+                    val phone = activeCall.details.handle?.schemeSpecificPart ?: "Unknown"
+                    val name = activeCall.details.callerDisplayName ?: "Unknown Caller"
+                    val stateStr = when (activeCall.state) {
+                        android.telecom.Call.STATE_RINGING -> "RINGING"
+                        android.telecom.Call.STATE_ACTIVE -> "ACTIVE"
+                        android.telecom.Call.STATE_HOLDING -> "HOLDING"
+                        else -> "ACTIVE"
+                    }
+                    val js = JSObject().apply {
+                        put("phoneNumber", phone)
+                        put("callerName", name)
+                        put("timestamp", System.currentTimeMillis())
+                        put("isScreeningActive", AegisInCallService.isScreeningActive)
+                        put("callState", stateStr)
+                    }
+                    plugin.notifyListeners("callRestored", js, true)
+                }
+            }
+        }
     }
 
     override fun load() {
@@ -270,6 +294,33 @@ class CallScreeningPlugin : Plugin() {
         val hold = call.getBoolean("hold", false) ?: false
         AegisInCallService.holdCall(hold)
         val ret = JSObject().apply { put("success", true); put("hold", hold) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun getCurrentCall(call: PluginCall) {
+        val activeCall = AegisInCallService.activeCall
+        val ret = JSObject()
+        if (activeCall != null) {
+            val phone = activeCall.details.handle?.schemeSpecificPart ?: "Unknown"
+            val name = activeCall.details.callerDisplayName ?: "Unknown Caller"
+            val stateStr = when (activeCall.state) {
+                android.telecom.Call.STATE_RINGING -> "RINGING"
+                android.telecom.Call.STATE_ACTIVE -> "ACTIVE"
+                android.telecom.Call.STATE_HOLDING -> "HOLDING"
+                android.telecom.Call.STATE_DIALING -> "DIALING"
+                android.telecom.Call.STATE_CONNECTING -> "CONNECTING"
+                else -> "ACTIVE"
+            }
+            ret.put("hasActiveCall", true)
+            ret.put("phoneNumber", phone)
+            ret.put("callerName", name)
+            ret.put("callState", stateStr)
+            ret.put("isScreeningActive", AegisInCallService.isScreeningActive)
+        } else {
+            ret.put("hasActiveCall", false)
+            ret.put("isScreeningActive", false)
+        }
         call.resolve(ret)
     }
 

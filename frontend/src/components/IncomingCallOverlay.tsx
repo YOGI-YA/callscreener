@@ -34,10 +34,16 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
 }) => {
   const savedLang = (localStorage.getItem('aegis_screener_language') || 'AUTO') as 'AUTO' | 'EN' | 'HI' | 'HINGLISH';
 
-  // Always start in RINGING unless explicitly initiated as an outgoing call
+  // Start in initialPhase if provided (e.g. restored screening/active call), otherwise RINGING
   const [callPhase, setCallPhase] = useState<'RINGING' | 'SCREENING' | 'CONNECTED'>(
-    incomingCall.isOutgoing ? 'CONNECTED' : 'RINGING'
+    incomingCall.initialPhase || (incomingCall.isOutgoing ? 'CONNECTED' : 'RINGING')
   );
+
+  useEffect(() => {
+    if (incomingCall.initialPhase) {
+      setCallPhase(incomingCall.initialPhase);
+    }
+  }, [incomingCall.initialPhase]);
 
   // In-call active controls state
   const [isMuted, setIsMuted] = useState<boolean>(false);

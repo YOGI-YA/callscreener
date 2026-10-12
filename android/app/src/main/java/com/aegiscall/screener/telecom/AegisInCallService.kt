@@ -47,11 +47,12 @@ class AegisInCallService : InCallService() {
             // Answer the call programmatically to screen it
             activeCall?.answer(VideoProfile.STATE_AUDIO_ONLY)
 
-            // Route telecom audio so remote caller on the line hears the AI voice
+            // Keep audio in earpiece mode during screening so it does NOT blast
+            // out of the device's loudspeaker at the user in the room.
             try {
-                serviceInstance?.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                serviceInstance?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
             } catch (e: Exception) {
-                Log.w(TAG, "Could not set speaker route for screening: ${e.message}")
+                Log.w(TAG, "Could not set audio route for screening: ${e.message}")
             }
 
             // Start AI voice conversation (TTS + STT)

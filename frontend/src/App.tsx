@@ -60,6 +60,27 @@ export const App: React.FC = () => {
     }
     refreshAllData();
 
+    // Check if there is an existing ongoing/ringing call right now on native device
+    const syncActiveCall = async () => {
+      try {
+        const cur = await CapacitorService.getCurrentCall();
+        if (cur.hasActiveCall && cur.phoneNumber) {
+          setIncomingCall((prev) => {
+            if (prev && prev.phoneNumber === cur.phoneNumber) return prev;
+            return {
+              phoneNumber: cur.phoneNumber!,
+              callerName: cur.callerName || 'Incoming Caller',
+              callPresentationMode: 'ALLOWED',
+              initialPhase: cur.isScreeningActive ? 'SCREENING' : cur.callState === 'ACTIVE' ? 'CONNECTED' : 'RINGING'
+            };
+          });
+        }
+      } catch (e) {
+        console.warn('Error syncing active call:', e);
+      }
+    };
+    syncActiveCall();
+
     // Listen for real incoming calls screened by Android Telecom in real time
     const removeListener = CapacitorService.addCallScreenedListener((realCall) => {
       console.log('Real incoming call screened on phone:', realCall);
@@ -74,7 +95,8 @@ export const App: React.FC = () => {
       setIncomingCall({
         phoneNumber: incoming.phoneNumber,
         callerName: incoming.callerName || 'Incoming Caller',
-        callPresentationMode: 'ALLOWED'
+        callPresentationMode: 'ALLOWED',
+        initialPhase: 'RINGING'
       });
 
       // Analyze caller with on-device AI
@@ -89,15 +111,41 @@ export const App: React.FC = () => {
       }).catch(console.error);
     });
 
+    // Listen for call brought back to front from lockscreen or notification
+    const removeRestoredListener = CapacitorService.addCallRestoredListener((restored) => {
+      console.log('Live phone call restored:', restored);
+      setIncomingCall({
+        phoneNumber: restored.phoneNumber,
+        callerName: restored.callerName || 'Incoming Caller',
+        callPresentationMode: 'ALLOWED',
+        initialPhase: restored.isScreeningActive ? 'SCREENING' : restored.callState === 'ACTIVE' ? 'CONNECTED' : 'RINGING'
+      });
+    });
+
+    // When call ends natively, clear incoming call overlay
+    const removeEndedListener = CapacitorService.addCallEndedListener(() => {
+      console.log('Live phone call ended');
+      setIncomingCall(null);
+      setActiveResult(null);
+    });
+
+    window.addEventListener('focus', syncActiveCall);
+    document.addEventListener('visibilitychange', syncActiveCall);
+
     const interval = setInterval(() => {
       ApiService.checkHealth().then(setBackendStatus).catch(() => {});
       CapacitorService.checkRoleStatus().then((res) => setRoleGranted(res.roleGranted)).catch(() => {});
-    }, 5000);
+      syncActiveCall();
+    }, 4000);
 
     return () => {
       clearInterval(interval);
+      window.removeEventListener('focus', syncActiveCall);
+      document.removeEventListener('visibilitychange', syncActiveCall);
       if (removeListener) removeListener();
       if (removeIncomingListener) removeIncomingListener();
+      if (removeRestoredListener) removeRestoredListener();
+      if (removeEndedListener) removeEndedListener();
     };
   }, []);
 

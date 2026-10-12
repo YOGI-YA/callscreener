@@ -45,6 +45,7 @@ export interface IncomingCallPayload {
   callPresentationMode?: 'ALLOWED' | 'RESTRICTED' | 'UNKNOWN' | 'PAYPHONE';
   dialogueHistory?: DialogueTurn[];
   isOutgoing?: boolean;
+  initialPhase?: 'RINGING' | 'SCREENING' | 'CONNECTED';
 }
 
 export interface ScreeningResult {

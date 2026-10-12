@@ -45,7 +45,7 @@ object CallNotificationManager {
 
         // Tap notification to bring In-Call Overlay UI to front
         val contentIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             putExtra("IS_INCOMING_CALL", true)
         }
         val contentPendingIntent = PendingIntent.getActivity(
@@ -94,6 +94,7 @@ object CallNotificationManager {
             .setContentTitle("Incoming Call: $displayName")
             .setContentText("Tap to screen with AI, answer, or decline")
             .setContentIntent(contentPendingIntent)
+            .setFullScreenIntent(contentPendingIntent, true) // Required by Android to show in-call UI over lockscreen / active apps
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

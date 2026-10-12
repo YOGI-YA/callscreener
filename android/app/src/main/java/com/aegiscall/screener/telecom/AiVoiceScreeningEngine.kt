@@ -60,9 +60,14 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                 override fun onStart(utteranceId: String?) {
                     mainHandler.post {
                         try {
+                            if (!AegisInCallService.isScreeningActive) {
+                                tts?.stop()
+                                return@post
+                            }
                             audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
+                            // Do NOT turn on loudspeaker - keep device speaker silent during screening
                             @Suppress("DEPRECATION")
-                            audioManager?.isSpeakerphoneOn = true
+                            audioManager?.isSpeakerphoneOn = false
                         } catch (e: Exception) {
                             Log.w(TAG, "Audio routing onStart error: ${e.message}")
                         }
@@ -70,6 +75,7 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                 }
                 override fun onDone(utteranceId: String?) {
                     mainHandler.post {
+                        if (!AegisInCallService.isScreeningActive) return@post
                         try {
                             audioManager?.mode = AudioManager.MODE_IN_CALL
                         } catch (e: Exception) {
@@ -152,6 +158,10 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
     }
 
     fun speakAiResponse(context: Context, message: String) {
+        if (!AegisInCallService.isScreeningActive) {
+            Log.i(TAG, "Screening not active, skipping speakAiResponse")
+            return
+        }
         initialize(context)
 
         // Broadcast text to UI
@@ -168,14 +178,17 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
         } else {
             // TTS warming up, start listening after brief pause
             mainHandler.postDelayed({
-                CallScreeningPlugin.broadcastAiSpeech(message)
-                startListeningForCaller()
+                if (AegisInCallService.isScreeningActive) {
+                    CallScreeningPlugin.broadcastAiSpeech(message)
+                    startListeningForCaller()
+                }
             }, 2000)
         }
     }
 
     private fun startListeningForCaller() {
         mainHandler.post {
+            if (!AegisInCallService.isScreeningActive) return@post
             try {
                 val ctx = AegisInCallService.appContext
                 if (!SpeechRecognizer.isRecognitionAvailable(ctx)) {
@@ -245,6 +258,7 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
 
     fun stop() {
         try {
+            mainHandler.removeCallbacksAndMessages(null)
             tts?.stop()
             speechRecognizer?.stopListening()
             speechRecognizer?.destroy()
@@ -252,7 +266,13 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
             isListening = false
             // Restore audio mode
             mainHandler.post {
-                audioManager?.mode = AudioManager.MODE_NORMAL
+                try {
+                    audioManager?.mode = AudioManager.MODE_NORMAL
+                    @Suppress("DEPRECATION")
+                    audioManager?.isSpeakerphoneOn = false
+                } catch (e: Exception) {
+                    // ignore
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping AiVoiceScreeningEngine", e)
