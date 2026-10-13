@@ -185,6 +185,54 @@ export const App: React.FC = () => {
     setActiveResult(null);
   };
 
+  // Trigger rich Truecaller demo scenarios
+  const handleSimulateScenario = async (scenario: 'bank_fraud' | 'delivery' | 'telemarketer') => {
+    let payload: IncomingCallPayload;
+    if (scenario === 'bank_fraud') {
+      payload = {
+        phoneNumber: '+1 (800) 432-1000',
+        callerName: 'Chase Fraud Prevention',
+        callPresentationMode: 'ALLOWED',
+        location: 'New York, NY',
+        carrier: 'AT&T Business',
+        simulatedAudioTranscript: 'Hello, this is officer Miller from the fraud detection team. We detected an unauthorized charge of 890 dollars on your debit card. Please confirm your OTP and card numbers immediately to cancel it.'
+      };
+    } else if (scenario === 'delivery') {
+      payload = {
+        phoneNumber: '+91 98201 44321',
+        callerName: 'Amazon Prime Courier',
+        callPresentationMode: 'ALLOWED',
+        location: 'Mumbai, MH',
+        carrier: 'Airtel 5G',
+        simulatedAudioTranscript: 'Hello bhaiya, main Amazon delivery se bol raha hoon. Aapka parcel leke main building ke main gate pe khada hoon. Parcel security ke paas chhod dun ya door pe aaoon?'
+      };
+    } else {
+      payload = {
+        phoneNumber: '+91 88001 99223',
+        callerName: 'Premier Platinum Bank',
+        callPresentationMode: 'ALLOWED',
+        location: 'Delhi, DL',
+        carrier: 'Jio 5G',
+        simulatedAudioTranscript: 'Good afternoon sir! You have been pre-approved for an exclusive lifetime-free credit card with 10 lakh limit. Can you please spare two minutes to complete your KYC?'
+      };
+    }
+
+    setIncomingCall(payload);
+    setActiveResult(null);
+    setIsScreening(true);
+
+    try {
+      const result = await ApiService.screenCall(payload);
+      setActiveResult(result);
+      setLogs((prev) => [result, ...prev]);
+      ApiService.getStats().then(setStats).catch(() => {});
+    } catch (e) {
+      console.error('Error simulating call:', e);
+    } finally {
+      setIsScreening(false);
+    }
+  };
+
   // Manual override inside incoming call overlay
   const handleOverrideAction = (verdict: ScreeningVerdict) => {
     if (activeResult) {
@@ -288,6 +336,7 @@ export const App: React.FC = () => {
               onLaunchSimulator={() => setActiveTab('dialer')}
               onSelectLog={(log) => setSelectedLog(log)}
               onNavigateToTab={(tab) => setActiveTab(tab as TabId)}
+              onSimulateScenario={handleSimulateScenario}
             />
           )}
 
