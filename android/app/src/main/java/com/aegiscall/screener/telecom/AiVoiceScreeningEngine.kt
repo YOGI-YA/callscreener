@@ -2,7 +2,9 @@ package com.aegiscall.screener.telecom
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
 import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +13,7 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
 import android.util.Log
 import com.aegiscall.screener.plugins.CallScreeningPlugin
 import java.util.Locale
@@ -18,20 +21,10 @@ import java.util.Locale
 /**
  * AiVoiceScreeningEngine
  * ──────────────────────
- * Handles TTS (AI speaking) and STT (caller listening) during an active
- * phone call when AegisCall is the Default Phone App.
- *
- * AUDIO ROUTING:
- * When a call is active, Android routes audio to the call stream.
- * We set AudioManager to MODE_IN_CALL and route to earpiece so TTS plays
- * into the phone's earpiece path (which is the same stream the caller hears).
- *
- * IMPORTANT: SpeechRecognizer captures from the device microphone.
- * During a live call, both our STT mic and the call audio share the mic.
- * This is an Android platform constraint — the workaround for a proper
- * production app would be to use AudioRecord directly and an acoustic
- * echo-canceller (AEC), but Android's built-in AEC handles this reasonably
- * for VOICE_COMMUNICATION audio sessions.
+ * Handles bidirectional AI call screening during an active phone call:
+ * 1. AI Assistant speaks directly to the caller over the voice call audio stream.
+ * 2. Real-time Speech-To-Text listens to the caller's spoken replies word-by-word.
+ * 3. Audio routing ensures the caller on the other end hears the AI speech loud & clear.
  */
 object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
 
@@ -42,7 +35,10 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
     private var isTtsReady = false
     private var isListening = false
     private var currentLanguage = "en-US"
+    private var voicePersona = "female" // "female", "male", "natural"
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    var isBotVoiceEnabled: Boolean = true
 
     fun initialize(context: Context) {
         if (tts == null) {
@@ -56,6 +52,16 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             tts?.language = Locale.US
+
+            // Direct TTS audio into telephony / voice communication audio stream
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+                tts?.setAudioAttributes(audioAttributes)
+            }
+
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {
                     mainHandler.post {
@@ -64,10 +70,16 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                                 tts?.stop()
                                 return@post
                             }
+                            // Unmute uplink so audio transmits to the other party on the phone call
+                            AegisInCallService.serviceInstance?.setMuted(false)
+                            audioManager?.isMicrophoneMute = false
                             audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
-                            // Do NOT turn on loudspeaker - keep device speaker silent during screening
-                            @Suppress("DEPRECATION")
-                            audioManager?.isSpeakerphoneOn = false
+
+                            // Ensure optimal volume on the voice call stream
+                            val maxVol = audioManager?.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL) ?: 0
+                            if (maxVol > 0) {
+                                audioManager?.setStreamVolume(AudioManager.STREAM_VOICE_CALL, (maxVol * 0.95).toInt(), 0)
+                            }
                         } catch (e: Exception) {
                             Log.w(TAG, "Audio routing onStart error: ${e.message}")
                         }
@@ -81,14 +93,16 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                         } catch (e: Exception) {
                             Log.w(TAG, "Audio routing onDone error: ${e.message}")
                         }
-                        // After AI finishes speaking, start listening for caller's response
+                        // After AI finishes speaking to the caller, listen for the caller's response
                         startListeningForCaller()
                     }
                 }
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
                     mainHandler.post {
-                        startListeningForCaller()
+                        if (AegisInCallService.isScreeningActive) {
+                            startListeningForCaller()
+                        }
                     }
                 }
             })
@@ -100,41 +114,49 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
         }
     }
 
+    fun setVoicePersona(persona: String) {
+        voicePersona = persona.lowercase()
+        val locale = try {
+            Locale.forLanguageTag(currentLanguage)
+        } catch (e: Exception) {
+            Locale.US
+        }
+        applyHighFidelityVoice(locale)
+    }
+
     private fun applyHighFidelityVoice(targetLocale: Locale) {
         try {
             tts?.language = targetLocale
-            // Conversational rhythm: 1.03x speed, natural pitch
-            tts?.setSpeechRate(1.03f)
-            tts?.setPitch(1.0f)
+            tts?.setSpeechRate(1.02f)
+            tts?.setPitch(if (voicePersona == "male") 0.92f else 1.05f)
 
             val availableVoices = tts?.voices
             if (!availableVoices.isNullOrEmpty()) {
-                val bestVoice = availableVoices
-                    .filter { it.locale.language == targetLocale.language }
-                    .maxByOrNull { v ->
-                        var score = 0
-                        val name = v.name.lowercase()
-                        if (name.contains("network")) score += 60
-                        if (name.contains("neural")) score += 50
-                        if (name.contains("natural")) score += 40
-                        if (name.contains("wavenet")) score += 35
-                        if (v.quality >= android.speech.tts.Voice.QUALITY_VERY_HIGH) score += 30
-                        if (v.quality == android.speech.tts.Voice.QUALITY_HIGH) score += 20
-                        score
-                    }
+                val matchingVoices = availableVoices.filter { it.locale.language == targetLocale.language }
+                val bestVoice = matchingVoices.maxByOrNull { v ->
+                    var score = 0
+                    val name = v.name.lowercase()
+                    if (voicePersona == "female" && (name.contains("female") || name.contains("fem") || name.contains("girl"))) score += 40
+                    if (voicePersona == "male" && (name.contains("male") || name.contains("man") || name.contains("boy"))) score += 40
+                    if (name.contains("network")) score += 60
+                    if (name.contains("neural")) score += 50
+                    if (name.contains("natural")) score += 45
+                    if (name.contains("wavenet")) score += 35
+                    if (v.quality >= Voice.QUALITY_VERY_HIGH) score += 30
+                    if (v.quality == Voice.QUALITY_HIGH) score += 20
+                    score
+                }
                 if (bestVoice != null) {
                     tts?.voice = bestVoice
-                    Log.i(TAG, "Activated Free Neural Voice: ${bestVoice.name} (quality=${bestVoice.quality})")
+                    Log.i(TAG, "Activated voice: ${bestVoice.name} (quality=${bestVoice.quality}) for $voicePersona")
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Could not apply neural voice: ${e.message}")
+            Log.w(TAG, "Could not apply voice: ${e.message}")
         }
     }
 
-    var isBotVoiceEnabled: Boolean = false
-
-    fun startScreeningConversation(context: Context, language: String = "auto", enableBotVoice: Boolean = false) {
+    fun startScreeningConversation(context: Context, language: String = "auto", enableBotVoice: Boolean = true) {
         isBotVoiceEnabled = enableBotVoice
         currentLanguage = when (language.lowercase()) {
             "hi" -> "hi-IN"
@@ -144,33 +166,28 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
 
         initialize(context)
 
-        // Always stop any pending TTS to guarantee silence on device
         try {
             tts?.stop()
         } catch (e: Exception) {
             // ignore
         }
 
-        if (enableBotVoice) {
-            val targetLocale = try {
-                Locale.forLanguageTag(currentLanguage)
-            } catch (e: Exception) {
-                Locale.US
-            }
-            applyHighFidelityVoice(targetLocale)
+        val targetLocale = try {
+            Locale.forLanguageTag(currentLanguage)
+        } catch (e: Exception) {
+            Locale.US
+        }
+        applyHighFidelityVoice(targetLocale)
 
+        if (enableBotVoice) {
             val greeting = when (language.lowercase()) {
                 "hi" -> "नमस्ते। मैं इस कॉल की जांच करने वाला एआई सहायक हूं। कृपया अपना नाम और कॉल करने का कारण बताएं।"
-                "hinglish" -> "Hello, main AI assistant bol raha hoon. Please apna naam aur call karne ka reason bataiye."
-                else -> "Hello, I am the AI assistant screening this call on the recipient's behalf. Please state your name and the reason you are calling."
+                "hinglish" -> "Namaste, main recipient ke liye call screen kar raha hoon. Kripya apna naam aur call karne ka reason batayein."
+                else -> "Hello, I am screening calls on behalf of the recipient with Aegis AI. Please state your name and why you are calling."
             }
-
             speakAiResponse(context, greeting)
         } else {
-            // SILENT LISTENER MODE (Default / Next-Level wiretap monitor)
-            // No bot speaks. Local user phone is completely quiet.
-            // Immediately start listening for caller's words one by one.
-            Log.i(TAG, "Silent Word-by-Word Caller Listener activated. No bot speech.")
+            Log.i(TAG, "Silent listener mode activated. Starting STT listener.")
             startListeningForCaller()
         }
     }
@@ -180,30 +197,36 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
             Log.i(TAG, "Screening not active, skipping speakAiResponse")
             return
         }
-        if (!isBotVoiceEnabled) {
-            Log.i(TAG, "Bot voice disabled: silent listener mode active. Skipping TTS.")
-            return
-        }
+        isBotVoiceEnabled = true
         initialize(context)
 
-        // Broadcast text to UI
+        // Broadcast utterance to frontend UI for live bubble
         CallScreeningPlugin.broadcastAiSpeech(message)
+
+        // Stop STT while AI speaks so AI doesn't transcribe its own voice
+        speechRecognizer?.stopListening()
+        isListening = false
 
         if (isTtsReady) {
             val utteranceId = "ai_${System.currentTimeMillis()}"
             val params = Bundle().apply {
                 putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
+                putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
                 putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId)
             }
             tts?.speak(message, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
         } else {
-            // TTS warming up, start listening after brief pause
             mainHandler.postDelayed({
                 if (AegisInCallService.isScreeningActive) {
-                    CallScreeningPlugin.broadcastAiSpeech(message)
-                    startListeningForCaller()
+                    val utteranceId = "ai_${System.currentTimeMillis()}"
+                    val params = Bundle().apply {
+                        putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
+                        putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+                        putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId)
+                    }
+                    tts?.speak(message, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
                 }
-            }, 1000)
+            }, 800)
         }
     }
 

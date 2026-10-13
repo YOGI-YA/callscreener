@@ -181,13 +181,24 @@ export class CapacitorService {
     return { success: false };
   }
 
-  public static async screenCallWithAi(language: string = 'auto', enableBotVoice: boolean = false): Promise<{ success: boolean }> {
+  public static async screenCallWithAi(language: string = 'auto', enableBotVoice: boolean = true): Promise<{ success: boolean }> {
     if (!this.isNative()) return { success: true };
     try {
       const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
       if (plugin?.screenCallWithAi) return await plugin.screenCallWithAi({ language, enableBotVoice });
     } catch (e) {
       console.error('screenCallWithAi failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async setAiVoicePersona(persona: string): Promise<{ success: boolean }> {
+    if (!this.isNative()) return { success: true };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.setAiVoicePersona) return await plugin.setAiVoicePersona({ persona });
+    } catch (e) {
+      console.error('setAiVoicePersona failed:', e);
     }
     return { success: false };
   }

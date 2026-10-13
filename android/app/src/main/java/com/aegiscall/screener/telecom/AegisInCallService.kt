@@ -46,27 +46,26 @@ class AegisInCallService : InCallService() {
             CallScreeningPlugin.broadcastCallEnded()
         }
 
-        fun startAiScreening(language: String = "auto", enableBotVoice: Boolean = false) {
+        fun startAiScreening(language: String = "auto", enableBotVoice: Boolean = true) {
             isScreeningActive = true
             // Answer the call programmatically to screen it
             activeCall?.answer(VideoProfile.STATE_AUDIO_ONLY)
 
-            // MUTE the user's mic uplink so caller cannot hear user room sounds during wiretap screening
+            // Unmute the mic/uplink so caller hears the AI Assistant clearly
             try {
-                serviceInstance?.setMuted(true)
+                serviceInstance?.setMuted(false)
             } catch (e: Exception) {
-                Log.w(TAG, "Could not set initial mute: ${e.message}")
+                Log.w(TAG, "Could not configure initial mute: ${e.message}")
             }
 
-            // Keep audio in earpiece mode during screening so it does NOT blast
-            // out of the device's loudspeaker at the user in the room.
+            // Route audio to earpiece by default so room loudspeaker doesn't blast
             try {
                 serviceInstance?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
             } catch (e: Exception) {
                 Log.w(TAG, "Could not set audio route for screening: ${e.message}")
             }
 
-            // Start word-by-word listener (with bot voice disabled by default)
+            // Start AI screening conversation (bot greets caller, STT listens for reply)
             AiVoiceScreeningEngine.startScreeningConversation(appContext, language, enableBotVoice)
 
             // Show ongoing screening notification
@@ -79,6 +78,12 @@ class AegisInCallService : InCallService() {
 
         fun sendQuickReply(replyText: String) {
             if (isScreeningActive) {
+                try {
+                    serviceInstance?.setMuted(false)
+                } catch (e: Exception) {
+                    // ignore
+                }
+                AiVoiceScreeningEngine.isBotVoiceEnabled = true
                 AiVoiceScreeningEngine.speakAiResponse(appContext, replyText)
             }
         }

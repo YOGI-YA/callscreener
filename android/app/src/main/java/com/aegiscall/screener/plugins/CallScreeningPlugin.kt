@@ -254,9 +254,17 @@ class CallScreeningPlugin : Plugin() {
     @PluginMethod
     fun screenCallWithAi(call: PluginCall) {
         val language = call.getString("language") ?: "auto"
-        val enableBotVoice = call.getBoolean("enableBotVoice", false) ?: false
+        val enableBotVoice = call.getBoolean("enableBotVoice", true) ?: true
         AegisInCallService.startAiScreening(language, enableBotVoice)
         val ret = JSObject().apply { put("success", true) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun setAiVoicePersona(call: PluginCall) {
+        val persona = call.getString("persona") ?: "female"
+        com.aegiscall.screener.telecom.AiVoiceScreeningEngine.setVoicePersona(persona)
+        val ret = JSObject().apply { put("success", true); put("persona", persona) }
         call.resolve(ret)
     }
 
