@@ -133,7 +133,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span className="truecaller-verified-badge">
-              <CheckCircle2 size={13} /> Protection Active
+              <CheckCircle2 size={13} /> Live AI Call Screener
             </span>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
               12.8M Fraud Signatures
