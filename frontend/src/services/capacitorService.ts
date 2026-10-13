@@ -319,7 +319,7 @@ export class CapacitorService {
     return { success: false, isRecording: false };
   }
 
-  public static async isCallRecording(): Promise<{ isRecording: boolean }> {
+  public static async isCallRecording(): Promise<{ isRecording: boolean; durationSeconds?: number; amplitude?: number }> {
     if (!this.isNative()) {
       return { isRecording: localStorage.getItem('mock_is_recording') === 'true' };
     }
@@ -332,6 +332,71 @@ export class CapacitorService {
       console.error('isCallRecording failed:', e);
     }
     return { isRecording: false };
+  }
+
+  public static async getRecordedCalls(): Promise<{ success: boolean; recordings: any[] }> {
+    if (!this.isNative()) {
+      const stored = localStorage.getItem('mock_recordings_list');
+      if (stored) {
+        try {
+          return { success: true, recordings: JSON.parse(stored) };
+        } catch {}
+      }
+      return {
+        success: true,
+        recordings: [
+          {
+            id: 'demo_1',
+            fileName: 'Call_+18004321000_20261013_142210.m4a',
+            phoneNumber: '+18004321000',
+            filePath: '/storage/emulated/0/Recordings/AegisCall/Call_+18004321000_20261013_142210.m4a',
+            timestamp: Date.now() - 3600000,
+            durationSeconds: 48,
+            fileSizeBytes: 768400
+          },
+          {
+            id: 'demo_2',
+            fileName: 'Call_+919820144321_20261013_110540.m4a',
+            phoneNumber: '+919820144321',
+            filePath: '/storage/emulated/0/Recordings/AegisCall/Call_+919820144321_20261013_110540.m4a',
+            timestamp: Date.now() - 14400000,
+            durationSeconds: 32,
+            fileSizeBytes: 512200
+          }
+        ]
+      };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.getRecordedCalls) {
+        return await plugin.getRecordedCalls();
+      }
+    } catch (e) {
+      console.error('getRecordedCalls failed:', e);
+    }
+    return { success: false, recordings: [] };
+  }
+
+  public static async deleteRecordedCall(filePath: string): Promise<{ success: boolean }> {
+    if (!this.isNative()) {
+      const stored = localStorage.getItem('mock_recordings_list');
+      if (stored) {
+        try {
+          const list = JSON.parse(stored).filter((r: any) => r.filePath !== filePath);
+          localStorage.setItem('mock_recordings_list', JSON.stringify(list));
+        } catch {}
+      }
+      return { success: true };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.deleteRecordedCall) {
+        return await plugin.deleteRecordedCall({ filePath });
+      }
+    } catch (e) {
+      console.error('deleteRecordedCall failed:', e);
+    }
+    return { success: false };
   }
 
   public static addRecordingSavedListener(callback: (data: { saved: boolean; filePath: string; location: string }) => void): (() => void) | null {

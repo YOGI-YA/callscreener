@@ -1,8 +1,10 @@
 package com.aegiscall.screener.telecom
 
+import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.media.MediaMetadataRetriever
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
@@ -15,13 +17,21 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+data class RecordedCallItem(
+    val id: String,
+    val fileName: String,
+    val phoneNumber: String,
+    val filePath: String,
+    val timestamp: Long,
+    val durationSeconds: Long,
+    val fileSizeBytes: Long
+)
+
 /**
  * CallRecorderManager
  * ───────────────────
- * Manages native in-call audio recording and securely saves recordings
- * directly into Android's public "Recordings" or "Music" library (MediaStore)
- * so users can play and access their call recordings in their standard
- * Voice Recorder, Music Player, or File Manager apps.
+ * Manages native in-call audio recording, live amplitude metering,
+ * public MediaStore export ("Recordings/AegisCall"), and retrieval of saved recordings.
  */
 object CallRecorderManager {
 
@@ -57,10 +67,25 @@ object CallRecorderManager {
             }
 
             // Attempt in-call communication audio source first, fallback to physical mic
-            try {
-                recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
-            } catch (e: Exception) {
-                Log.w(TAG, "VOICE_COMMUNICATION source failed, falling back to MIC: ${e.message}")
+            var audioSourceSet = false
+            val sourcesToTry = listOf(
+                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.DEFAULT
+            )
+
+            for (src in sourcesToTry) {
+                try {
+                    recorder.setAudioSource(src)
+                    audioSourceSet = true
+                    Log.i(TAG, "AudioSource successfully set to: $src")
+                    break
+                } catch (e: Exception) {
+                    Log.w(TAG, "AudioSource $src failed: ${e.message}")
+                }
+            }
+
+            if (!audioSourceSet) {
                 recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
             }
 
@@ -83,6 +108,20 @@ object CallRecorderManager {
             isRecording = false
             return false
         }
+    }
+
+    fun getRecordingAmplitude(): Int {
+        return try {
+            if (isRecording) mediaRecorder?.maxAmplitude ?: 0 else 0
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    fun getRecordingDurationSeconds(): Long {
+        return if (isRecording) {
+            (System.currentTimeMillis() - recordingStartTime) / 1000
+        } else 0L
     }
 
     fun stopRecording(context: Context): String? {
@@ -122,7 +161,7 @@ object CallRecorderManager {
 
         var savedLocation: String? = null
 
-        // Strategy 1: Modern Android MediaStore API (Android 10+ / API 29+) -> Saves to "Recordings" or "Music"
+        // Strategy 1: MediaStore API (Android 10+ / API 29+) -> Public "Recordings" or "Music"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
                 val relativeDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -158,7 +197,7 @@ object CallRecorderManager {
             }
         }
 
-        // Strategy 2: Direct File System Fallback (Public DIRECTORY_RECORDINGS or DIRECTORY_MUSIC)
+        // Strategy 2: Direct File System Fallback
         if (savedLocation == null) {
             try {
                 val baseDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -171,7 +210,6 @@ object CallRecorderManager {
                 tempFile.copyTo(targetFile, overwrite = true)
                 savedLocation = targetFile.absolutePath
 
-                // Trigger MediaScanner so music & audio recorder apps index the file immediately
                 @Suppress("DEPRECATION")
                 val mediaScanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).apply {
                     data = Uri.fromFile(targetFile)
@@ -184,8 +222,138 @@ object CallRecorderManager {
         }
 
         cleanupTempFile()
-        Log.i(TAG, "Call recording successfully saved to: ${savedLocation ?: "Recordings/Music"} (duration: ${durationMs / 1000}s)")
+        Log.i(TAG, "Call recording saved to: ${savedLocation ?: "Recordings/Music"} (duration: ${durationMs / 1000}s)")
         return savedLocation ?: fileName
+    }
+
+    fun getSavedRecordings(context: Context): List<RecordedCallItem> {
+        val list = mutableListOf<RecordedCallItem>()
+
+        // 1. Scan filesystem directory Recordings/AegisCall & Music/AegisCall
+        val dirsToScan = listOf(
+            File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_RECORDINGS), "AegisCall"),
+            File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "AegisCall"),
+            File(context.filesDir, "recordings")
+        )
+
+        for (dir in dirsToScan) {
+            if (dir.exists() && dir.isDirectory) {
+                val files = dir.listFiles { f -> f.isFile && (f.name.endsWith(".m4a") || f.name.endsWith(".mp3") || f.name.endsWith(".aac")) }
+                if (files != null) {
+                    for (file in files) {
+                        try {
+                            val phone = parsePhoneFromFileName(file.name)
+                            var durationSec = 0L
+                            try {
+                                val retriever = MediaMetadataRetriever()
+                                retriever.setDataSource(file.absolutePath)
+                                val durStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                                durationSec = (durStr?.toLongOrNull() ?: 0L) / 1000L
+                                retriever.release()
+                            } catch (e: Exception) {
+                                // ignore
+                            }
+
+                            list.add(
+                                RecordedCallItem(
+                                    id = file.name,
+                                    fileName = file.name,
+                                    phoneNumber = phone,
+                                    filePath = file.absolutePath,
+                                    timestamp = file.lastModified(),
+                                    durationSeconds = durationSec,
+                                    fileSizeBytes = file.length()
+                                )
+                            )
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error reading recording file ${file.name}: ${e.message}")
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Query MediaStore if on Android 10+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val projection = arrayOf(
+                    MediaStore.Audio.Media._ID,
+                    MediaStore.Audio.Media.DISPLAY_NAME,
+                    MediaStore.Audio.Media.DATE_MODIFIED,
+                    MediaStore.Audio.Media.DURATION,
+                    MediaStore.Audio.Media.SIZE
+                )
+                val selection = "${MediaStore.Audio.Media.DISPLAY_NAME} LIKE ?"
+                val selectionArgs = arrayOf("Call_%")
+                val sortOrder = "${MediaStore.Audio.Media.DATE_MODIFIED} DESC"
+
+                context.contentResolver.query(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    selection,
+                    selectionArgs,
+                    sortOrder
+                )?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                    val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+                    val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+                    val durCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+                    val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+
+                    while (cursor.moveToNext()) {
+                        val id = cursor.getLong(idCol)
+                        val name = cursor.getString(nameCol)
+                        val date = cursor.getLong(dateCol) * 1000L
+                        val durMs = cursor.getLong(durCol)
+                        val size = cursor.getLong(sizeCol)
+                        val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+
+                        // Avoid duplicates if already discovered in filesystem
+                        if (list.none { it.fileName == name }) {
+                            list.add(
+                                RecordedCallItem(
+                                    id = id.toString(),
+                                    fileName = name,
+                                    phoneNumber = parsePhoneFromFileName(name),
+                                    filePath = contentUri.toString(),
+                                    timestamp = date,
+                                    durationSeconds = durMs / 1000L,
+                                    fileSizeBytes = size
+                                )
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "MediaStore query error: ${e.message}")
+            }
+        }
+
+        return list.sortedByDescending { it.timestamp }
+    }
+
+    fun deleteRecording(context: Context, filePath: String): Boolean {
+        try {
+            if (filePath.startsWith("content://")) {
+                val uri = Uri.parse(filePath)
+                val count = context.contentResolver.delete(uri, null, null)
+                return count > 0
+            } else {
+                val file = File(filePath)
+                if (file.exists()) {
+                    return file.delete()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete recording at $filePath", e)
+        }
+        return false
+    }
+
+    private fun parsePhoneFromFileName(name: String): String {
+        // Filename format: Call_+1234567890_20261013_223010.m4a
+        val parts = name.split("_")
+        return if (parts.size >= 2) parts[1] else "Unknown"
     }
 
     private fun cleanupTempFile() {
@@ -200,3 +368,4 @@ object CallRecorderManager {
         }
     }
 }
+

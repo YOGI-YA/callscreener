@@ -106,3 +106,13 @@ export interface AppSettings {
   language: LanguagePreference;
   aiAssistantGreeting: string;
 }
+
+export interface RecordedCallItem {
+  id: string;
+  fileName: string;
+  phoneNumber: string;
+  filePath: string;
+  timestamp: number;
+  durationSeconds: number;
+  fileSizeBytes: number;
+}

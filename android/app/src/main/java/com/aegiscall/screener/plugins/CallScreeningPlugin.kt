@@ -364,8 +364,52 @@ class CallScreeningPlugin : Plugin() {
     fun isCallRecording(call: PluginCall) {
         val ret = JSObject().apply {
             put("isRecording", CallRecorderManager.isRecording)
+            put("durationSeconds", CallRecorderManager.getRecordingDurationSeconds())
+            put("amplitude", CallRecorderManager.getRecordingAmplitude())
         }
         call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun getRecordedCalls(call: PluginCall) {
+        try {
+            val recordings = CallRecorderManager.getSavedRecordings(context)
+            val arr = JSArray()
+            for (item in recordings) {
+                val obj = JSObject().apply {
+                    put("id", item.id)
+                    put("fileName", item.fileName)
+                    put("phoneNumber", item.phoneNumber)
+                    put("filePath", item.filePath)
+                    put("timestamp", item.timestamp)
+                    put("durationSeconds", item.durationSeconds)
+                    put("fileSizeBytes", item.fileSizeBytes)
+                }
+                arr.put(obj)
+            }
+            val ret = JSObject().apply {
+                put("success", true)
+                put("recordings", arr)
+            }
+            call.resolve(ret)
+        } catch (e: Exception) {
+            call.reject("Failed to list recordings: ${e.message}")
+        }
+    }
+
+    @PluginMethod
+    fun deleteRecordedCall(call: PluginCall) {
+        val filePath = call.getString("filePath")
+        if (!filePath.isNullOrBlank()) {
+            val deleted = CallRecorderManager.deleteRecording(context, filePath)
+            val ret = JSObject().apply {
+                put("success", deleted)
+                put("deleted", deleted)
+            }
+            call.resolve(ret)
+        } else {
+            call.reject("filePath is required")
+        }
     }
 
     @PluginMethod
