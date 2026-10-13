@@ -32,6 +32,7 @@ class AegisInCallService : InCallService() {
 
         fun rejectCall() {
             isScreeningActive = false
+            CustomGreetingManager.stopPlayback()
             AiVoiceScreeningEngine.stop()
             if (CallRecorderManager.isRecording) {
                 val saved = CallRecorderManager.stopRecording(appContext)
@@ -51,7 +52,7 @@ class AegisInCallService : InCallService() {
             // Answer the call programmatically to screen it
             activeCall?.answer(VideoProfile.STATE_AUDIO_ONLY)
 
-            // Unmute the mic/uplink so caller hears the AI Assistant clearly
+            // Unmute the mic/uplink so caller hears the greeting clearly
             try {
                 serviceInstance?.setMuted(false)
             } catch (e: Exception) {
@@ -65,8 +66,28 @@ class AegisInCallService : InCallService() {
                 Log.w(TAG, "Could not set audio route for screening: ${e.message}")
             }
 
-            // Start AI screening conversation (bot greets caller, STT listens for reply)
-            AiVoiceScreeningEngine.startScreeningConversation(appContext, language, enableBotVoice)
+            // Route between Personal Voice Voicemail vs AI Assistant
+            if (CustomGreetingManager.activeScreeningMode == "PERSONAL_VOICEMAIL" && CustomGreetingManager.hasCustomGreeting(appContext)) {
+                CallScreeningPlugin.broadcastVoicemailGreetingPlaying()
+                CustomGreetingManager.playGreetingToCall(appContext) {
+                    if (!isScreeningActive) return@playGreetingToCall
+                    try {
+                        activeCall?.playDtmfTone('1')
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            try { activeCall?.stopDtmfTone() } catch (e: Exception) {}
+                        }, 250)
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                    val phone = activeCall?.details?.handle?.schemeSpecificPart ?: "Unknown"
+                    CallRecorderManager.startRecording(appContext, phone)
+                    CallScreeningPlugin.broadcastVoicemailRecordingStarted()
+                    AiVoiceScreeningEngine.startListeningForCaller()
+                }
+            } else {
+                // Standard AI screening conversation (bot greets caller, STT listens for reply)
+                AiVoiceScreeningEngine.startScreeningConversation(appContext, language, enableBotVoice)
+            }
 
             // Show ongoing screening notification
             activeCall?.let { call ->
@@ -90,6 +111,7 @@ class AegisInCallService : InCallService() {
 
         fun pickupCall() {
             isScreeningActive = false
+            CustomGreetingManager.stopPlayback()
             AiVoiceScreeningEngine.stop()
             // Unmute mic so user can immediately talk to caller
             try {

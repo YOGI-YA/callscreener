@@ -70,6 +70,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
   const [callEndedNotice, setCallEndedNotice] = useState<string | null>(null);
   const [customReplyInput, setCustomReplyInput] = useState<string>('');
   const [aiVoicePersona, setAiVoicePersona] = useState<'female' | 'male' | 'natural'>('female');
+  const [screeningMode, setScreeningMode] = useState<'AI_ASSISTANT' | 'PERSONAL_VOICEMAIL'>('AI_ASSISTANT');
+  const [voicemailState, setVoicemailState] = useState<'IDLE' | 'GREETING_PLAYING' | 'RECORDING_CALLER_MESSAGE'>('IDLE');
 
   const dialogueEndRef = useRef<HTMLDivElement>(null);
 
@@ -122,6 +124,9 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
   // Native telephony listeners
   useEffect(() => {
     CapacitorService.triggerHapticFeedback();
+    CapacitorService.getScreeningMode().then((res) => {
+      if (res?.mode) setScreeningMode(res.mode);
+    });
 
     const unlistenTranscript = CapacitorService.addLiveTranscriptListener((data) => {
       setIsCallerSpeaking(true);
@@ -154,6 +159,19 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       setTimeout(() => setIsAiSpeaking(false), 2400);
     });
 
+    const unlistenVoicemail = CapacitorService.addVoicemailStateListener((data) => {
+      if (data.state === 'GREETING_PLAYING') {
+        setVoicemailState('GREETING_PLAYING');
+        setIsAiSpeaking(true);
+        setIsCallerSpeaking(false);
+      } else if (data.state === 'RECORDING_CALLER_MESSAGE') {
+        setVoicemailState('RECORDING_CALLER_MESSAGE');
+        setIsAiSpeaking(false);
+        setIsCallerSpeaking(true);
+        setIsRecording(true);
+      }
+    });
+
     const unlistenAudioLevel = CapacitorService.addAudioLevelListener((data) => {
       setRmsLevel(data.rmsDb);
     });
@@ -181,6 +199,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     return () => {
       if (unlistenTranscript) unlistenTranscript();
       if (unlistenAiSpeech) unlistenAiSpeech();
+      if (unlistenVoicemail) unlistenVoicemail();
       if (unlistenAudioLevel) unlistenAudioLevel();
       if (unlistenRecordingSaved) unlistenRecordingSaved();
       if (unlistenEnded) unlistenEnded();
@@ -202,12 +221,82 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     await CapacitorService.setAiVoicePersona(persona);
   };
 
-  // Start AI Call Screening (Speaks greeting to caller over phone line)
+  // Start Call Screening (AI Bot Voice or Personal Voicemail)
   const handleStartAiScreening = async () => {
     CapacitorService.triggerHapticFeedback();
     setCallPhase('SCREENING');
     setIsAiSpeaking(true);
     setIsCallerSpeaking(false);
+
+    if (screeningMode === 'PERSONAL_VOICEMAIL') {
+      setVoicemailState('GREETING_PLAYING');
+      const greetingMessage = '📼 [Playing your recorded voice greeting: "Please state your name and leave your message after the tone..."]';
+      setDialogue([
+        {
+          sender: 'AI_ASSISTANT',
+          text: greetingMessage,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+
+      await CapacitorService.screenCallWithAi(activeLang.toLowerCase(), true);
+
+      if (!CapacitorService.isNative()) {
+        const customB64 = localStorage.getItem('custom_voice_greeting_b64');
+        if (customB64 && customB64.startsWith('data:audio')) {
+          try {
+            const audio = new Audio(customB64);
+            audio.play();
+          } catch {}
+        } else if (listenIn) {
+          CapacitorService.speakOutLoud("Hi, you've reached my voicemail. Please leave your message after the tone.", 'en-US');
+        }
+
+        setTimeout(() => {
+          CapacitorService.playWebDtmfTone('1');
+          setVoicemailState('RECORDING_CALLER_MESSAGE');
+          setIsAiSpeaking(false);
+          setIsCallerSpeaking(true);
+          setIsRecording(true);
+
+          setDialogue((prev) => [
+            ...prev,
+            {
+              sender: 'AI_ASSISTANT',
+              text: '🔔 [Tone played • Recording caller message live...]',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ]);
+
+          if (incomingCall.simulatedAudioTranscript) {
+            const words = incomingCall.simulatedAudioTranscript.trim().split(/\s+/);
+            let wordIdx = 0;
+            let accumulated = '';
+            const interval = setInterval(() => {
+              if (wordIdx < words.length) {
+                accumulated += (wordIdx > 0 ? ' ' : '') + words[wordIdx];
+                setCallerStreamText(accumulated);
+                wordIdx++;
+              } else {
+                clearInterval(interval);
+                setIsCallerSpeaking(false);
+                setDialogue((prev) => [
+                  ...prev,
+                  {
+                    sender: 'CALLER',
+                    text: accumulated,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  }
+                ]);
+                setCallerStreamText('');
+                handleProcessCallerUtterance(accumulated);
+              }
+            }, 150);
+          }
+        }, 3200);
+      }
+      return;
+    }
 
     // Initial greeting in dialogue feed
     setDialogue([
@@ -702,35 +791,109 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       </div>
 
       {/* ────────────────────────────────────────────────────────────────
-          PHASE 1: RINGING (Hero "Screen with AI" + Answer + Decline)
+          PHASE 1: RINGING (Hero "Screen with AI / My Voice" + Answer + Decline)
          ──────────────────────────────────────────────────────────────── */}
       {callPhase === 'RINGING' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1, justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, flex: 1, justifyContent: 'center' }}>
+          {/* Mode Switcher Pill */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+            <button
+              onClick={() => {
+                CapacitorService.triggerHapticFeedback();
+                setScreeningMode('AI_ASSISTANT');
+                CapacitorService.setScreeningMode('AI_ASSISTANT');
+              }}
+              style={{
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                padding: '5px 14px',
+                borderRadius: 'var(--radius-full)',
+                background: screeningMode === 'AI_ASSISTANT' ? 'var(--accent-glow)' : 'rgba(255,255,255,0.08)',
+                color: screeningMode === 'AI_ASSISTANT' ? '#0f172a' : 'var(--text-secondary)',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5
+              }}
+            >
+              <Bot size={13} />
+              <span>AI Screener</span>
+            </button>
+
+            <button
+              onClick={() => {
+                CapacitorService.triggerHapticFeedback();
+                setScreeningMode('PERSONAL_VOICEMAIL');
+                CapacitorService.setScreeningMode('PERSONAL_VOICEMAIL');
+              }}
+              style={{
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                padding: '5px 14px',
+                borderRadius: 'var(--radius-full)',
+                background: screeningMode === 'PERSONAL_VOICEMAIL' ? '#10b981' : 'rgba(255,255,255,0.08)',
+                color: screeningMode === 'PERSONAL_VOICEMAIL' ? '#fff' : 'var(--text-secondary)',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5
+              }}
+            >
+              <Mic size={13} />
+              <span>My Voice Voicemail</span>
+            </button>
+          </div>
+
           {/* Truecaller / Google Pixel Hero Card */}
           <div
             className="glass-card"
             style={{
               padding: '16px 18px',
               textAlign: 'center',
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.08) 100%)',
-              border: '1px solid rgba(99, 102, 241, 0.35)',
+              background: screeningMode === 'PERSONAL_VOICEMAIL'
+                ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.08) 100%)'
+                : 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.08) 100%)',
+              border: screeningMode === 'PERSONAL_VOICEMAIL'
+                ? '1px solid rgba(16, 185, 129, 0.35)'
+                : '1px solid rgba(99, 102, 241, 0.35)',
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 6 }}>
-              <Sparkles size={18} color="var(--accent-glow)" />
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--accent-glow)' }}>
-                Truecaller AI Voice Screener
-              </span>
+              {screeningMode === 'PERSONAL_VOICEMAIL' ? (
+                <>
+                  <Mic size={18} color="#34d399" />
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#34d399' }}>
+                    Personal Voice Answering Machine
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} color="var(--accent-glow)" />
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--accent-glow)' }}>
+                    Truecaller AI Voice Screener
+                  </span>
+                </>
+              )}
             </div>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, margin: 0 }}>
-              The AI Assistant will <strong>answer and speak to the caller</strong>, ask who they are and why they are calling, and stream the transcript live.
+              {screeningMode === 'PERSONAL_VOICEMAIL' ? (
+                <>
+                  Plays your <strong>recorded voice greeting</strong> to the caller, beeps, and records their message with real-time live transcription.
+                </>
+              ) : (
+                <>
+                  The AI Assistant will <strong>answer and speak to the caller</strong>, ask who they are and why they are calling, and stream the transcript live.
+                </>
+              )}
             </p>
           </div>
 
           {/* Action Buttons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* 1. HERO BUTTON: Screen with AI (Speaks to Caller) */}
+            {/* 1. HERO BUTTON: Screen with AI or My Voice */}
             <button
               onClick={handleStartAiScreening}
               className="btn-primary"
@@ -739,8 +902,12 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                 padding: '16px 20px',
                 fontSize: '1.05rem',
                 fontWeight: 800,
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)',
-                boxShadow: '0 0 30px rgba(99, 102, 241, 0.55)',
+                background: screeningMode === 'PERSONAL_VOICEMAIL'
+                  ? 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)'
+                  : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)',
+                boxShadow: screeningMode === 'PERSONAL_VOICEMAIL'
+                  ? '0 0 30px rgba(16, 185, 129, 0.55)'
+                  : '0 0 30px rgba(99, 102, 241, 0.55)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -750,11 +917,13 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Bot size={22} />
-                <span>Screen Call with AI</span>
+                {screeningMode === 'PERSONAL_VOICEMAIL' ? <Mic size={22} /> : <Bot size={22} />}
+                <span>{screeningMode === 'PERSONAL_VOICEMAIL' ? 'Answer with My Voice Voicemail' : 'Screen Call with AI'}</span>
               </div>
               <span style={{ fontSize: '0.73rem', opacity: 0.92, fontWeight: 500 }}>
-                AI speaks to caller • Real-time live transcript • 1-tap responses
+                {screeningMode === 'PERSONAL_VOICEMAIL'
+                  ? 'Plays your voice • Records caller message • Real-time live transcript'
+                  : 'AI speaks to caller • Real-time live transcript • 1-tap responses'}
               </span>
             </button>
 
@@ -808,7 +977,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
          ──────────────────────────────────────────────────────────────── */}
       {callPhase === 'SCREENING' && (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 10, minHeight: 0 }}>
-          {/* Top AI Voice Header & Equalizer */}
+          {/* Top Voice Header & Equalizer */}
           <div
             className="glass-card"
             style={{
@@ -821,7 +990,29 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {isAiSpeaking ? (
+              {screeningMode === 'PERSONAL_VOICEMAIL' ? (
+                voicemailState === 'GREETING_PLAYING' || isAiSpeaking ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Mic size={15} color="#34d399" />
+                    <span style={{ fontSize: '0.76rem', color: '#34d399', fontWeight: 700 }}>Playing Your Voice Greeting</span>
+                    <div className="ai-voice-wave" style={{ marginLeft: 4 }}>
+                      <div className="ai-wave-bar" />
+                      <div className="ai-wave-bar" />
+                      <div className="ai-wave-bar" />
+                    </div>
+                  </div>
+                ) : isCallerSpeaking || voicemailState === 'RECORDING_CALLER_MESSAGE' ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Radio size={15} color="#ef4444" />
+                    <span style={{ fontSize: '0.76rem', color: '#f87171', fontWeight: 700 }}>Recording Caller Message</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Mic size={15} color="#34d399" />
+                    <span style={{ fontSize: '0.76rem', color: '#34d399', fontWeight: 700 }}>Voicemail Ready</span>
+                  </div>
+                )
+              ) : isAiSpeaking ? (
                 <div className="ai-voice-wave">
                   <div className="ai-wave-bar" />
                   <div className="ai-wave-bar" />
@@ -843,25 +1034,41 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
               )}
             </div>
 
-            {/* AI Voice Persona Selector */}
+            {/* AI Voice Persona Selector or Voicemail Mode Badge */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {(['female', 'male'] as const).map((persona) => (
-                <button
-                  key={persona}
-                  onClick={() => handleSelectVoicePersona(persona)}
+              {screeningMode === 'PERSONAL_VOICEMAIL' ? (
+                <span
                   style={{
                     fontSize: '0.68rem',
                     fontWeight: 700,
-                    padding: '3px 8px',
+                    padding: '3px 9px',
                     borderRadius: 'var(--radius-full)',
-                    background: aiVoicePersona === persona ? 'var(--accent-glow)' : 'rgba(255,255,255,0.06)',
-                    color: aiVoicePersona === persona ? '#0f172a' : 'var(--text-secondary)',
-                    textTransform: 'capitalize'
+                    background: 'rgba(16, 185, 129, 0.2)',
+                    color: '#34d399',
+                    border: '1px solid rgba(16, 185, 129, 0.4)'
                   }}
                 >
-                  {persona === 'female' ? 'Sophia' : 'Alex'}
-                </button>
-              ))}
+                  📼 My Voice Voicemail
+                </span>
+              ) : (
+                (['female', 'male'] as const).map((persona) => (
+                  <button
+                    key={persona}
+                    onClick={() => handleSelectVoicePersona(persona)}
+                    style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      padding: '3px 8px',
+                      borderRadius: 'var(--radius-full)',
+                      background: aiVoicePersona === persona ? 'var(--accent-glow)' : 'rgba(255,255,255,0.06)',
+                      color: aiVoicePersona === persona ? '#0f172a' : 'var(--text-secondary)',
+                      textTransform: 'capitalize'
+                    }}
+                  >
+                    {persona === 'female' ? 'Sophia' : 'Alex'}
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
@@ -887,14 +1094,20 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                     style={{
                       fontSize: '0.72rem',
                       fontWeight: 800,
-                      color: turn.sender === 'AI_ASSISTANT' ? 'var(--accent-glow)' : '#38bdf8',
+                      color: turn.sender === 'AI_ASSISTANT' ? (screeningMode === 'PERSONAL_VOICEMAIL' ? '#34d399' : 'var(--accent-glow)') : '#38bdf8',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 4
                     }}
                   >
-                    {turn.sender === 'AI_ASSISTANT' ? <Bot size={12} /> : <User size={12} />}
-                    {turn.sender === 'AI_ASSISTANT' ? 'Aegis AI Assistant' : (incomingCall.callerName || 'Caller')}
+                    {turn.sender === 'AI_ASSISTANT' ? (
+                      screeningMode === 'PERSONAL_VOICEMAIL' ? <Mic size={12} color="#34d399" /> : <Bot size={12} />
+                    ) : (
+                      <User size={12} />
+                    )}
+                    {turn.sender === 'AI_ASSISTANT'
+                      ? (screeningMode === 'PERSONAL_VOICEMAIL' ? 'My Voice Greeting' : 'Aegis AI Assistant')
+                      : (incomingCall.callerName || 'Caller')}
                   </span>
                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
                     {turn.timestamp}
@@ -912,7 +1125,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <User size={12} />
-                    {incomingCall.callerName || 'Caller'} (Transcribing live…)
+                    {incomingCall.callerName || 'Caller'} {screeningMode === 'PERSONAL_VOICEMAIL' ? '(Leaving voicemail…)' : '(Transcribing live…)'}
                   </span>
                 </div>
                 <div style={{ fontSize: '0.88rem', color: '#f8fafc', lineHeight: 1.45 }}>

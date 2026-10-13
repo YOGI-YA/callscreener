@@ -154,6 +154,26 @@ class CallScreeningPlugin : Plugin() {
             }
         }
 
+        fun broadcastVoicemailGreetingPlaying() {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("state", "GREETING_PLAYING")
+                    put("timestamp", System.currentTimeMillis())
+                }
+                plugin.notifyListeners("voicemailStateChanged", js, true)
+            }
+        }
+
+        fun broadcastVoicemailRecordingStarted() {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("state", "RECORDING_CALLER_MESSAGE")
+                    put("timestamp", System.currentTimeMillis())
+                }
+                plugin.notifyListeners("voicemailStateChanged", js, true)
+            }
+        }
+
         fun notifyCallRestored() {
             instance?.let { plugin ->
                 val activeCall = AegisInCallService.activeCall
@@ -410,6 +430,53 @@ class CallScreeningPlugin : Plugin() {
         } else {
             call.reject("filePath is required")
         }
+    }
+
+    @PluginMethod
+    fun saveCustomGreeting(call: PluginCall) {
+        val base64 = call.getString("audioBase64")
+        if (!base64.isNullOrBlank()) {
+            val saved = com.aegiscall.screener.telecom.CustomGreetingManager.saveGreetingFromBase64(context, base64)
+            val ret = JSObject().apply { put("success", saved) }
+            call.resolve(ret)
+        } else {
+            call.reject("audioBase64 is required")
+        }
+    }
+
+    @PluginMethod
+    fun getCustomGreeting(call: PluginCall) {
+        val hasGreeting = com.aegiscall.screener.telecom.CustomGreetingManager.hasCustomGreeting(context)
+        val duration = com.aegiscall.screener.telecom.CustomGreetingManager.getGreetingDurationSeconds(context)
+        val file = com.aegiscall.screener.telecom.CustomGreetingManager.getGreetingFile(context)
+        val ret = JSObject().apply {
+            put("hasGreeting", hasGreeting)
+            put("durationSeconds", duration)
+            put("filePath", if (hasGreeting) file.absolutePath else "")
+        }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun deleteCustomGreeting(call: PluginCall) {
+        val deleted = com.aegiscall.screener.telecom.CustomGreetingManager.deleteGreeting(context)
+        val ret = JSObject().apply { put("success", deleted) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun setScreeningMode(call: PluginCall) {
+        val mode = call.getString("mode") ?: "AI_ASSISTANT"
+        com.aegiscall.screener.telecom.CustomGreetingManager.activeScreeningMode = mode
+        val ret = JSObject().apply { put("success", true); put("mode", mode) }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun getScreeningMode(call: PluginCall) {
+        val mode = com.aegiscall.screener.telecom.CustomGreetingManager.activeScreeningMode
+        val ret = JSObject().apply { put("mode", mode) }
+        call.resolve(ret)
     }
 
     @PluginMethod

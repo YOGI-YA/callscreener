@@ -413,6 +413,104 @@ export class CapacitorService {
     return null;
   }
 
+  // Personal Voicemail & Custom Greeting Methods
+  public static async saveCustomGreeting(audioBase64: string): Promise<{ success: boolean }> {
+    if (!this.isNative()) {
+      localStorage.setItem('custom_voice_greeting_b64', audioBase64);
+      localStorage.setItem('custom_voice_greeting_time', Date.now().toString());
+      return { success: true };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.saveCustomGreeting) {
+        return await plugin.saveCustomGreeting({ audioBase64 });
+      }
+    } catch (e) {
+      console.error('saveCustomGreeting failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async getCustomGreeting(): Promise<{ hasGreeting: boolean; durationSeconds: number; filePath: string }> {
+    if (!this.isNative()) {
+      const b64 = localStorage.getItem('custom_voice_greeting_b64');
+      return {
+        hasGreeting: !!b64,
+        durationSeconds: b64 ? 8 : 0,
+        filePath: b64 ? 'Local Storage / WebAudio' : ''
+      };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.getCustomGreeting) {
+        return await plugin.getCustomGreeting();
+      }
+    } catch (e) {
+      console.error('getCustomGreeting failed:', e);
+    }
+    return { hasGreeting: false, durationSeconds: 0, filePath: '' };
+  }
+
+  public static async deleteCustomGreeting(): Promise<{ success: boolean }> {
+    if (!this.isNative()) {
+      localStorage.removeItem('custom_voice_greeting_b64');
+      localStorage.removeItem('custom_voice_greeting_time');
+      return { success: true };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.deleteCustomGreeting) {
+        return await plugin.deleteCustomGreeting();
+      }
+    } catch (e) {
+      console.error('deleteCustomGreeting failed:', e);
+    }
+    return { success: false };
+  }
+
+  public static async setScreeningMode(mode: 'AI_ASSISTANT' | 'PERSONAL_VOICEMAIL'): Promise<{ success: boolean; mode: string }> {
+    localStorage.setItem('screening_mode_preference', mode);
+    if (!this.isNative()) return { success: true, mode };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.setScreeningMode) {
+        return await plugin.setScreeningMode({ mode });
+      }
+    } catch (e) {
+      console.error('setScreeningMode failed:', e);
+    }
+    return { success: false, mode };
+  }
+
+  public static async getScreeningMode(): Promise<{ mode: 'AI_ASSISTANT' | 'PERSONAL_VOICEMAIL' }> {
+    const saved = (localStorage.getItem('screening_mode_preference') || 'AI_ASSISTANT') as 'AI_ASSISTANT' | 'PERSONAL_VOICEMAIL';
+    if (!this.isNative()) return { mode: saved };
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.getScreeningMode) {
+        const res = await plugin.getScreeningMode();
+        return { mode: res.mode || saved };
+      }
+    } catch (e) {
+      console.error('getScreeningMode failed:', e);
+    }
+    return { mode: saved };
+  }
+
+  public static addVoicemailStateListener(callback: (data: { state: string; timestamp: number }) => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('voicemailStateChanged', (data: any) => callback(data));
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching voicemailStateChanged listener:', e);
+    }
+    return null;
+  }
+
   // Web Audio DTMF synthesizer for authentic keypad dial sounds
   private static audioCtx: AudioContext | null = null;
   public static playWebDtmfTone(digit: string): void {
