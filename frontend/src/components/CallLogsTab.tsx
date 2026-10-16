@@ -290,7 +290,82 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
                     {log.rationale}
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={() => {
+                          CapacitorService.triggerHapticFeedback();
+                          CapacitorService.makeCall(log.phoneNumber);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '4px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'rgba(16, 185, 129, 0.15)',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          color: 'var(--color-safe)',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                        title="Call Number"
+                      >
+                        <Phone size={11} /> Call
+                      </button>
+
+                      {log.verdict !== 'REJECT' && (
+                        <button
+                          onClick={() => {
+                            CapacitorService.triggerHapticFeedback();
+                            onAddRule(log.phoneNumber, 'REJECT', `Block ${log.callerName || log.phoneNumber}`);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '4px 8px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                            color: 'var(--color-danger)',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                          title="Block this number"
+                        >
+                          <ShieldX size={11} /> Block
+                        </button>
+                      )}
+
+                      {log.verdict !== 'ALLOW' && (
+                        <button
+                          onClick={() => {
+                            CapacitorService.triggerHapticFeedback();
+                            onAddRule(log.phoneNumber, 'ALLOW', `Allow ${log.callerName || log.phoneNumber}`);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '4px 8px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'rgba(99, 102, 241, 0.15)',
+                            border: '1px solid rgba(99, 102, 241, 0.3)',
+                            color: 'var(--accent-glow)',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                          title="Whitelist this number"
+                        >
+                          <ShieldPlus size={11} /> Whitelist
+                        </button>
+                      )}
+                    </div>
+
                     <button
                       onClick={() => onDeleteLog(log.id)}
                       style={{ color: 'var(--text-muted)', padding: 4 }}
