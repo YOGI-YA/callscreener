@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { CallScreeningStats, ScreeningResult } from '../types';
 import { RiskBadge } from './RiskBadge';
+import { CapacitorService } from '../services/capacitorService';
 
 interface DashboardTabProps {
   stats: CallScreeningStats | null;
