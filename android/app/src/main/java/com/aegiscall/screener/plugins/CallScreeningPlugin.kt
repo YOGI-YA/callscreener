@@ -180,6 +180,7 @@ class CallScreeningPlugin : Plugin() {
                 if (activeCall != null) {
                     val phone = activeCall.details.handle?.schemeSpecificPart ?: "Unknown"
                     val name = activeCall.details.callerDisplayName ?: "Unknown Caller"
+                    @Suppress("DEPRECATION")
                     val stateStr = when (activeCall.state) {
                         android.telecom.Call.STATE_RINGING -> "RINGING"
                         android.telecom.Call.STATE_ACTIVE -> "ACTIVE"
@@ -486,6 +487,7 @@ class CallScreeningPlugin : Plugin() {
         if (activeCall != null) {
             val phone = activeCall.details.handle?.schemeSpecificPart ?: "Unknown"
             val name = activeCall.details.callerDisplayName ?: "Unknown Caller"
+            @Suppress("DEPRECATION")
             val stateStr = when (activeCall.state) {
                 android.telecom.Call.STATE_RINGING -> "RINGING"
                 android.telecom.Call.STATE_ACTIVE -> "ACTIVE"
@@ -664,6 +666,43 @@ class CallScreeningPlugin : Plugin() {
         val ret = JSObject()
         ret.put("success", true)
         call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun syncRules(call: PluginCall) {
+        val rulesJson = call.getString("rulesJson")
+        if (!rulesJson.isNullOrBlank()) {
+            com.aegiscall.screener.telecom.FastLocalRulesEngine.syncRulesFromJson(context, rulesJson)
+            val ret = JSObject().apply { put("success", true) }
+            call.resolve(ret)
+        } else {
+            call.reject("rulesJson is required")
+        }
+    }
+
+    @PluginMethod
+    fun deleteCallLogEntry(call: PluginCall) {
+        val number = call.getString("number")
+        val date = call.getLong("date")
+        if (number != null && date != null) {
+            try {
+                val cr = context.contentResolver
+                val deleted = cr.delete(
+                    CallLog.Calls.CONTENT_URI,
+                    "${CallLog.Calls.NUMBER} = ? AND ${CallLog.Calls.DATE} = ?",
+                    arrayOf(number, date.toString())
+                )
+                val ret = JSObject().apply {
+                    put("success", true)
+                    put("deletedCount", deleted)
+                }
+                call.resolve(ret)
+            } catch (e: Exception) {
+                call.reject("Failed to delete call log entry: ${e.message}")
+            }
+        } else {
+            call.reject("number and date are required")
+        }
     }
 
     // --- CONTACTS ---
