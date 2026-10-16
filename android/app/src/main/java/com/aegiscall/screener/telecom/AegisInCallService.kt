@@ -61,6 +61,7 @@ class AegisInCallService : InCallService() {
 
             // Route audio to earpiece by default so room loudspeaker doesn't blast
             try {
+                @Suppress("DEPRECATION")
                 serviceInstance?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
             } catch (e: Exception) {
                 Log.w(TAG, "Could not set audio route for screening: ${e.message}")
@@ -116,6 +117,7 @@ class AegisInCallService : InCallService() {
             // Unmute mic so user can immediately talk to caller
             try {
                 serviceInstance?.setMuted(false)
+                @Suppress("DEPRECATION")
                 serviceInstance?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
             } catch (e: Exception) {
                 Log.w(TAG, "Could not reset audio route to earpiece or unmute: ${e.message}")
@@ -134,7 +136,9 @@ class AegisInCallService : InCallService() {
         fun setMuted(muted: Boolean) {
             try {
                 serviceInstance?.setMuted(muted)
-                CallScreeningPlugin.broadcastCallAudioState(muted = muted, speakerOn = serviceInstance?.callAudioState?.route == CallAudioState.ROUTE_SPEAKER)
+                @Suppress("DEPRECATION")
+                val isSpeaker = serviceInstance?.callAudioState?.route == CallAudioState.ROUTE_SPEAKER
+                CallScreeningPlugin.broadcastCallAudioState(muted = muted, speakerOn = isSpeaker)
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to set mute: ${e.message}")
             }
@@ -142,12 +146,15 @@ class AegisInCallService : InCallService() {
 
         fun setSpeakerphone(speakerOn: Boolean) {
             try {
+                @Suppress("DEPRECATION")
                 if (speakerOn) {
                     serviceInstance?.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
                 } else {
                     serviceInstance?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
                 }
-                CallScreeningPlugin.broadcastCallAudioState(muted = serviceInstance?.callAudioState?.isMuted ?: false, speakerOn = speakerOn)
+                @Suppress("DEPRECATION")
+                val isMuted = serviceInstance?.callAudioState?.isMuted ?: false
+                CallScreeningPlugin.broadcastCallAudioState(muted = isMuted, speakerOn = speakerOn)
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to set speaker: ${e.message}")
             }
@@ -261,6 +268,7 @@ class AegisInCallService : InCallService() {
         }
     }
 
+    @Suppress("DEPRECATION")
     override fun onCallAudioStateChanged(audioState: CallAudioState?) {
         super.onCallAudioStateChanged(audioState)
         audioState?.let {
