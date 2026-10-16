@@ -74,12 +74,33 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           }}
         />
         {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}
-          >
-            Clear
-          </button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {/^\+?[0-9\s\-()]+$/.test(searchQuery.trim()) && (
+              <button
+                onClick={() => {
+                  CapacitorService.makeCall(searchQuery.trim());
+                }}
+                style={{
+                  fontSize: '0.72rem',
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(16, 185, 129, 0.2)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  color: 'var(--color-safe)',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Call
+              </button>
+            )}
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{ fontSize: '0.72rem', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              Clear
+            </button>
+          </div>
         )}
       </div>
 
