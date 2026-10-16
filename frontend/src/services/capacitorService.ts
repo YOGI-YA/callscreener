@@ -779,6 +779,40 @@ export class CapacitorService {
     return [];
   }
 
+  // --- RULES SYNC TO NATIVE TELECOM ---
+
+  public static async syncRules(rules: any[]): Promise<{ success: boolean }> {
+    if (!this.isNative()) {
+      return { success: true };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.syncRules) {
+        return await plugin.syncRules({ rulesJson: JSON.stringify(rules) });
+      }
+    } catch (e) {
+      console.warn('syncRules to native failed:', e);
+    }
+    return { success: false };
+  }
+
+  // --- DELETE CALL LOG ENTRY ---
+
+  public static async deleteCallLogEntry(number: string, date: number): Promise<{ success: boolean; deletedCount?: number }> {
+    if (!this.isNative()) {
+      return { success: true, deletedCount: 1 };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.deleteCallLogEntry) {
+        return await plugin.deleteCallLogEntry({ number, date });
+      }
+    } catch (e) {
+      console.warn('deleteCallLogEntry failed:', e);
+    }
+    return { success: false };
+  }
+
   // --- MAKE OUTGOING CALL ---
 
   public static async makeCall(number: string): Promise<{ success: boolean }> {

@@ -81,8 +81,9 @@ export class ApiService {
 
   public static async checkHealth(): Promise<{ status: string; latencyMs: number; raw?: any }> {
     const base = this.getBaseUrl();
-    if (!base && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return { status: 'online', latencyMs: 1 }; // Standalone on-device mode
+    if (!base) {
+      // Standalone On-Device AI Mode: zero cloud, 100% fast, 100% operational
+      return { status: 'online', latencyMs: 1, raw: { mode: 'on_device' } };
     }
 
     const start = Date.now();
@@ -96,7 +97,8 @@ export class ApiService {
       const data = await response.json();
       return { status: data.status || 'online', latencyMs: latency, raw: data };
     } catch {
-      return { status: 'online', latencyMs: 1 }; // Fallback to On-Device Mode
+      // Fallback to standalone mode if custom remote server is unreachable
+      return { status: 'online', latencyMs: 1, raw: { mode: 'on_device_fallback' } };
     }
   }
 
@@ -434,6 +436,7 @@ export class ApiService {
     const rules = await this.getRules();
     rules.push(newRule);
     localStorage.setItem(STORAGE_KEY_RULES, JSON.stringify(rules));
+    CapacitorService.syncRules(rules).catch(() => {});
     return newRule;
   }
 
@@ -448,6 +451,7 @@ export class ApiService {
 
     const rules = (await this.getRules()).filter((r) => r.id !== id);
     localStorage.setItem(STORAGE_KEY_RULES, JSON.stringify(rules));
+    CapacitorService.syncRules(rules).catch(() => {});
     return true;
   }
 }
