@@ -71,6 +71,21 @@ function avatarColor(name: string): string {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
+const LETTER_TO_T9: { [letter: string]: string } = {
+  a: '2', b: '2', c: '2',
+  d: '3', e: '3', f: '3',
+  g: '4', h: '4', i: '4',
+  j: '5', k: '5', l: '5',
+  m: '6', n: '6', o: '6',
+  p: '7', q: '7', r: '7', s: '7',
+  t: '8', u: '8', v: '8',
+  w: '9', x: '9', y: '9', z: '9'
+};
+
+function nameToT9(name: string): string {
+  return name.toLowerCase().split('').map((char) => LETTER_TO_T9[char] || '').join('');
+}
+
 export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onOutgoingCall }) => {
   const [section, setSection] = useState<DialerSection>('recent');
   const [dialNumber, setDialNumber] = useState('');
@@ -117,6 +132,33 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
   const handleAiScreen = (number: string, name: string) => {
     if (onIncomingCallPayload) onIncomingCallPayload(number, name);
   };
+
+  const handleDeleteCall = async (e: React.MouseEvent, call: DeviceCall) => {
+    e.stopPropagation();
+    CapacitorService.triggerHapticFeedback();
+    await CapacitorService.deleteCallLogEntry(call.number, call.date);
+    setCallLog((prev) => prev.filter((item) => !(item.number === call.number && item.date === call.date)));
+  };
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const cleaned = text.replace(/[^0-9+*#]/g, '');
+      if (cleaned) {
+        setDialNumber((prev) => prev + cleaned);
+      }
+    } catch {}
+  };
+
+  const t9Suggestions = dialNumber
+    ? contacts.filter((c) => {
+        const cleanNumber = c.number.replace(/\D/g, '');
+        const cleanDial = dialNumber.replace(/\D/g, '');
+        if (cleanDial && cleanNumber.includes(cleanDial)) return true;
+        const t9 = nameToT9(c.name);
+        return cleanDial && t9.includes(cleanDial);
+      }).slice(0, 3)
+    : [];
 
   const filteredContacts = contacts.filter(
     (c) =>
@@ -310,8 +352,24 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}
+                        title="Call"
                       >
                         <Phone size={14} color="var(--color-safe)" />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteCall(e, call)}
+                        style={{
+                          padding: '6px',
+                          background: 'rgba(239, 68, 68, 0.12)',
+                          border: '1px solid rgba(239, 68, 68, 0.25)',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title="Remove from history"
+                      >
+                        <Delete size={14} color="var(--color-danger)" />
                       </button>
                     </div>
                   </div>
@@ -438,15 +496,113 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
               >
                 {dialNumber || 'Enter number…'}
               </span>
-              {dialNumber && (
+              {dialNumber ? (
                 <button
                   onMouseDown={handleBackspace}
                   style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}
+                  title="Backspace"
                 >
                   <Delete size={20} />
                 </button>
+              ) : (
+                <button
+                  onClick={handlePaste}
+                  style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--accent-glow)',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                  }}
+                  title="Paste number"
+                >
+                  Paste
+                </button>
               )}
             </div>
+
+            {/* T9 Smart Predictive Suggestions */}
+            {t9Suggestions.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: 8,
+                }}
+              >
+                <div style={{ fontSize: '0.68rem', color: 'var(--accent-glow)', fontWeight: 700, paddingLeft: 4, letterSpacing: '0.05em' }}>
+                  T9 MATCHING CONTACTS
+                </div>
+                {t9Suggestions.map((suggestion) => (
+                  <div
+                    key={suggestion.id}
+                    onClick={() => setDialNumber(suggestion.number)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '6px 8px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <div
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: avatarColor(suggestion.name),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          color: '#fff',
+                        }}
+                      >
+                        {getInitials(suggestion.name)}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {suggestion.name}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                          {suggestion.number}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCall(suggestion.number, suggestion.name);
+                      }}
+                      style={{
+                        padding: 6,
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        border: '1px solid rgba(16, 185, 129, 0.4)',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                      }}
+                      title="Direct Call"
+                    >
+                      <Phone size={13} color="var(--color-safe)" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Keypad Grid */}
             <div
