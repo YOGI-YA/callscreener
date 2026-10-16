@@ -36,4 +36,24 @@ describe('AegisCall AI Frontend Application', () => {
     fireEvent.click(settingsTabBtn);
     expect(screen.getByText(/Android Telecom Role/i)).toBeInTheDocument();
   });
+
+  it('interacts with the phone keypad and enters numbers', async () => {
+    render(<App />);
+    const phoneTabBtn = screen.getByRole('button', { name: /^Phone$/i });
+    fireEvent.click(phoneTabBtn);
+
+    const keypadBtn = screen.getByRole('button', { name: /Keypad/i });
+    fireEvent.click(keypadBtn);
+
+    // Keypad display initial state
+    expect(screen.getByText(/Enter number…/i)).toBeInTheDocument();
+
+    // Tap digits 9, 8
+    const digit9 = screen.getByText('9');
+    fireEvent.mouseDown(digit9);
+    const digit8 = screen.getByText('8');
+    fireEvent.mouseDown(digit8);
+
+    expect(screen.getByText('98')).toBeInTheDocument();
+  });
 });
