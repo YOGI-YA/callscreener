@@ -353,6 +353,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     CapacitorService.triggerHapticFeedback();
     setCallPhase('CONNECTED');
     await CapacitorService.answerCall();
+    await CapacitorService.pickupCall();
   };
 
   const handleDeclineCall = async () => {
