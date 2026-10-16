@@ -12,6 +12,8 @@ object FastLocalRulesEngine {
     private val tollFraudRegex = Regex("^(\\+?1?(900|976))")
     private val satelliteFraudRegex = Regex("^(\\+?881|\\+?882|\\+?883|\\+?247|\\+?290)")
     private val spoofedZerosRegex = Regex("^(\\+?0+|0{7,15}|\\+?1?0000000000)$")
+    private const val RULES_PREFS = "aegis_screener_rules_prefs"
+    private const val RULES_KEY = "custom_rules_json"
 
     /**
      * Executes instant local regex & heuristic evaluation (<2ms)
@@ -61,7 +63,75 @@ object FastLocalRulesEngine {
             )
         }
 
+        // 3. User Custom Rules (Blacklist / Whitelist saved in app)
+        val customRuleMatch = evaluateCustomRules(context, rawPhoneNumber, clean)
+        if (customRuleMatch != null) {
+            return customRuleMatch
+        }
+
         return null
+    }
+
+    private fun evaluateCustomRules(context: Context, rawPhoneNumber: String, clean: String): ScreeningData? {
+        try {
+            val prefs = context.getSharedPreferences(RULES_PREFS, Context.MODE_PRIVATE)
+            val json = prefs.getString(RULES_KEY, null) ?: return null
+            val array = org.json.JSONArray(json)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val enabled = obj.optBoolean("enabled", true)
+                if (!enabled) continue
+
+                val patternStr = obj.optString("pattern", "")
+                val action = obj.optString("action", "REJECT").uppercase()
+                val desc = obj.optString("description", "User custom rule")
+                if (patternStr.isBlank()) continue
+
+                val isMatch = try {
+                    val regex = Regex(patternStr, RegexOption.IGNORE_CASE)
+                    regex.containsMatchIn(rawPhoneNumber) || regex.containsMatchIn(clean)
+                } catch (e: Exception) {
+                    rawPhoneNumber.contains(patternStr) || clean.contains(patternStr)
+                }
+
+                if (isMatch) {
+                    val isReject = action == "REJECT"
+                    val isSilence = action == "SILENCE"
+                    return ScreeningData(
+                        id = "user-rule-${UUID.randomUUID()}",
+                        phoneNumber = rawPhoneNumber,
+                        callerName = if (isReject) "Blocked Contact / Number" else "Whitelisted Contact",
+                        verdict = action,
+                        riskScore = if (isReject) 95 else if (isSilence) 50 else 0,
+                        riskLevel = if (isReject) "CRITICAL_SPAM" else if (isSilence) "MEDIUM" else "SAFE",
+                        category = if (isReject) "BLACKLIST" else "WHITELIST",
+                        confidence = 1.0,
+                        rationale = "Matched user rule: $desc",
+                        engine = "USER_RULE_ENGINE",
+                        latencyMs = 1L,
+                        timestamp = System.currentTimeMillis().toString(),
+                        suggestedActions = CallResponseActions(
+                            disallowCall = isReject,
+                            silenceCall = isSilence,
+                            rejectCall = isReject,
+                            skipNotification = isReject
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            // ignore JSON error
+        }
+        return null
+    }
+
+    fun syncRulesFromJson(context: Context, rulesJson: String) {
+        try {
+            val prefs = context.getSharedPreferences(RULES_PREFS, Context.MODE_PRIVATE)
+            prefs.edit().putString(RULES_KEY, rulesJson).apply()
+        } catch (e: Exception) {
+            // ignore
+        }
     }
 
     /**

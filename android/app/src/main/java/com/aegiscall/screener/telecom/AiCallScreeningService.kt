@@ -56,7 +56,7 @@ class AiCallScreeningService : CallScreeningService() {
         if (fastRuleResult != null) {
             Log.i(TAG, "Instant local rule match: ${fastRuleResult.verdict} (${fastRuleResult.rationale})")
             val callResponse = FastLocalRulesEngine.buildAndroidCallResponse(fastRuleResult)
-            respondToCall(callDetails, callResponse)
+            respondToCallSafely(callDetails, callResponse)
             CallHistoryStorage.saveCall(applicationContext, fastRuleResult)
             CallScreeningPlugin.broadcastScreenedCall(fastRuleResult)
             return
@@ -66,15 +66,17 @@ class AiCallScreeningService : CallScreeningService() {
         serviceScope.launch {
             val screeningResult: ScreeningData = try {
                 val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                val useOnDeviceOnly = prefs.getBoolean("use_on_device_only", true)
+                val configuredUrl = prefs.getString(KEY_API_URL, "") ?: ""
+                val hasRemoteBackend = configuredUrl.isNotBlank() && !configuredUrl.contains("10.0.2.2")
+                val useOnDeviceOnly = prefs.getBoolean("use_on_device_only", !hasRemoteBackend)
 
-                if (useOnDeviceOnly) {
-                    // Pure physical phone execution: zero laptop, zero cloud
+                if (useOnDeviceOnly || !hasRemoteBackend) {
+                    // Pure physical phone execution: zero laptop, zero cloud, instant
                     withTimeoutOrNull(NETWORK_DEADLINE_MS) {
                         OnDeviceLlmEngine.screenCallOnDevice(applicationContext, phoneNumber, callerName, null)
                     } ?: FastLocalRulesEngine.generateFallback(phoneNumber, "On-device processing deadline reached")
                 } else {
-                    // Optional network query mode
+                    // Optional remote backend query mode
                     withTimeoutOrNull(NETWORK_DEADLINE_MS) {
                         queryBackendScreening(phoneNumber, callerName, presentation)
                     } ?: OnDeviceLlmEngine.screenCallOnDevice(applicationContext, phoneNumber, callerName, null)
@@ -86,9 +88,17 @@ class AiCallScreeningService : CallScreeningService() {
 
             Log.i(TAG, "Physical On-Device Verdict: ${screeningResult.verdict} [Score: ${screeningResult.riskScore}] by ${screeningResult.engine}")
             val androidResponse = FastLocalRulesEngine.buildAndroidCallResponse(screeningResult)
-            respondToCall(callDetails, androidResponse)
+            respondToCallSafely(callDetails, androidResponse)
             CallHistoryStorage.saveCall(applicationContext, screeningResult)
             CallScreeningPlugin.broadcastScreenedCall(screeningResult)
+        }
+    }
+
+    private fun respondToCallSafely(callDetails: Call.Details, callResponse: CallScreeningService.CallResponse) {
+        try {
+            respondToCall(callDetails, callResponse)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to respondToCall safely: ${e.message}", e)
         }
     }
 
