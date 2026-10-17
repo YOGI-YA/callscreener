@@ -8,6 +8,7 @@ import android.media.MediaPlayer
 import android.os.Build
 import android.util.Base64
 import android.util.Log
+import com.aegiscall.screener.plugins.CallScreeningPlugin
 import java.io.File
 import java.io.FileOutputStream
 
@@ -82,6 +83,10 @@ object CustomGreetingManager {
         try {
             stopPlayback()
 
+            // Ensure telecom audio routing directs greeting to caller and silences local speaker
+            TelecomAudioRouter.configureScreeningAudioRoute(context, AegisInCallService.serviceInstance)
+            CallScreeningPlugin.broadcastAudioRouteState(transmittingToCaller = true, localMuted = !TelecomAudioRouter.isListenIn())
+
             val player = MediaPlayer()
             mediaPlayer = player
 
@@ -99,11 +104,13 @@ object CustomGreetingManager {
             player.setDataSource(file.absolutePath)
             player.setOnCompletionListener {
                 Log.i(TAG, "Personal greeting finished playing to caller")
+                CallScreeningPlugin.broadcastAudioRouteState(transmittingToCaller = false, localMuted = !TelecomAudioRouter.isListenIn())
                 stopPlayback()
                 onComplete()
             }
             player.setOnErrorListener { _, what, extra ->
                 Log.w(TAG, "MediaPlayer error playing greeting: what=$what extra=$extra")
+                CallScreeningPlugin.broadcastAudioRouteState(transmittingToCaller = false, localMuted = !TelecomAudioRouter.isListenIn())
                 stopPlayback()
                 onComplete()
                 true
@@ -111,9 +118,10 @@ object CustomGreetingManager {
 
             player.prepare()
             player.start()
-            Log.i(TAG, "Started playing personal voice greeting to caller on voice stream")
+            Log.i(TAG, "Started playing personal voice greeting to caller on voice stream (local suppressed)")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to play greeting to call", e)
+            CallScreeningPlugin.broadcastAudioRouteState(transmittingToCaller = false, localMuted = !TelecomAudioRouter.isListenIn())
             stopPlayback()
             onComplete()
         }
