@@ -55,7 +55,6 @@ describe('Recording Mail Forwarding & Call Audio Isolation', () => {
   it('triggers test email delivery from Settings tab', async () => {
     const sendTestEmailSpy = vi.spyOn(ApiService, 'sendTestEmail').mockResolvedValue({
       success: true,
-      message: 'Test email successfully dispatched',
     });
 
     render(<App />);
