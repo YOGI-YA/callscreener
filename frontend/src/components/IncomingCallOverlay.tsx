@@ -57,7 +57,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
   const [callDuration, setCallDuration] = useState<number>(0);
 
   // Screening dialogue & AI Voice state
-  const [listenIn, setListenIn] = useState<boolean>(true);
+  const [listenIn, setListenIn] = useState<boolean>(false);
+  const [isTransmittingToCaller, setIsTransmittingToCaller] = useState<boolean>(false);
   const [dialogue, setDialogue] = useState<DialogueTurn[]>([]);
   const [isAiSpeaking, setIsAiSpeaking] = useState<boolean>(false);
   const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
@@ -196,6 +197,11 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       setIsSpeakerOn(data.speakerOn);
     });
 
+    const unlistenAudioRoute = CapacitorService.addAudioRouteStateListener((data) => {
+      setIsTransmittingToCaller(data.transmittingToCaller);
+      setListenIn(data.isListenIn);
+    });
+
     return () => {
       if (unlistenTranscript) unlistenTranscript();
       if (unlistenAiSpeech) unlistenAiSpeech();
@@ -205,6 +211,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       if (unlistenEnded) unlistenEnded();
       if (unlistenPickedUp) unlistenPickedUp();
       if (unlistenAudio) unlistenAudio();
+      if (unlistenAudioRoute) unlistenAudioRoute();
     };
   }, [onDismiss]);
 
@@ -219,6 +226,14 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     CapacitorService.triggerHapticFeedback();
     setAiVoicePersona(persona);
     await CapacitorService.setAiVoicePersona(persona);
+  };
+
+  // Toggle Live Listen-In (Silent Call Monitoring on our side)
+  const handleToggleListenIn = async () => {
+    CapacitorService.triggerHapticFeedback();
+    const next = !listenIn;
+    setListenIn(next);
+    await CapacitorService.setListenIn(next);
   };
 
   // Start Call Screening (AI Bot Voice or Personal Voicemail)
@@ -628,27 +643,44 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
 
         {callPhase === 'SCREENING' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              onClick={() => {
-                CapacitorService.triggerHapticFeedback();
-                setListenIn(!listenIn);
-              }}
+            <div
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 5,
-                padding: '5px 12px',
+                padding: '4px 9px',
                 borderRadius: 'var(--radius-full)',
-                background: listenIn ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.08)',
-                border: `1px solid ${listenIn ? 'var(--accent-glow)' : 'var(--border-subtle)'}`,
-                color: listenIn ? 'var(--accent-glow)' : 'var(--text-secondary)',
-                fontSize: '0.74rem',
+                background: 'rgba(56, 189, 248, 0.12)',
+                border: '1px solid rgba(56, 189, 248, 0.28)',
+                color: '#38bdf8',
+                fontSize: '0.70rem',
                 fontWeight: 600
               }}
-              title="Toggle listening to caller on speakerphone"
+              title="Audio is transmitted strictly to the remote caller on the phone line"
             >
-              {listenIn ? <Volume2 size={13} /> : <VolumeX size={13} />}
-              <span>{listenIn ? 'Listening In' : 'Earpiece'}</span>
+              <Radio size={11} className="animate-pulse" />
+              <span>Caller Audio Live</span>
+            </div>
+            <button
+              onClick={handleToggleListenIn}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 12px',
+                borderRadius: 'var(--radius-full)',
+                background: listenIn ? 'rgba(99, 102, 241, 0.28)' : 'rgba(15, 23, 42, 0.65)',
+                border: `1px solid ${listenIn ? 'var(--accent-glow)' : 'rgba(255, 255, 255, 0.15)'}`,
+                color: listenIn ? '#818cf8' : '#94a3b8',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              title={listenIn ? 'Device speaker unmuted for live monitoring' : 'Device speaker silenced (caller hears AI privately)'}
+            >
+              {listenIn ? <Headphones size={13} color="#818cf8" /> : <VolumeX size={13} color="#94a3b8" />}
+              <span>{listenIn ? 'Monitoring' : 'Listen In'}</span>
             </button>
             <button
               onClick={onDismiss}
