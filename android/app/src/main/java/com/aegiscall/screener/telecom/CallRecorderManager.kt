@@ -10,12 +10,22 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Base64
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 data class RecordedCallItem(
     val id: String,
@@ -223,7 +233,74 @@ object CallRecorderManager {
 
         cleanupTempFile()
         Log.i(TAG, "Call recording saved to: ${savedLocation ?: "Recordings/Music"} (duration: ${durationMs / 1000}s)")
+
+        // Automatic email forwarding dispatch upon recording completion
+        if (savedLocation != null) {
+            triggerEmailForwarding(context, savedLocation, cleanPhone, durationMs / 1000)
+        }
+
         return savedLocation ?: fileName
+    }
+
+    private val scope = CoroutineScope(Dispatchers.IO)
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(3, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.SECONDS)
+        .build()
+
+    fun getRecordingBase64(context: Context, filePath: String): String? {
+        return try {
+            val file = File(filePath)
+            if (file.exists() && file.isFile) {
+                val bytes = file.readBytes()
+                Base64.encodeToString(bytes, Base64.NO_WRAP)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to read recording base64: ${e.message}")
+            null
+        }
+    }
+
+    fun triggerEmailForwarding(context: Context, savedLocation: String, phoneNumber: String, durationSec: Long) {
+        scope.launch {
+            try {
+                val prefs = context.getSharedPreferences("aegis_call_screener_prefs", Context.MODE_PRIVATE)
+                val targetEmail = prefs.getString("notification_email", "") ?: ""
+                val apiUrl = prefs.getString("backend_api_url", "http://10.0.2.2:4000") ?: "http://10.0.2.2:4000"
+
+                val file = File(savedLocation)
+                val base64Audio = if (file.exists()) getRecordingBase64(context, savedLocation) else null
+
+                val endpoint = if (apiUrl.endsWith("/api/recordings/forward-email")) apiUrl else "$apiUrl/api/recordings/forward-email"
+
+                val payload = JSONObject().apply {
+                    if (targetEmail.isNotBlank()) put("to", targetEmail)
+                    put("phoneNumber", phoneNumber)
+                    put("callerName", "Call with $phoneNumber")
+                    put("durationSeconds", durationSec)
+                    put("timestamp", System.currentTimeMillis())
+                    put("verdict", "ALLOW")
+                    put("riskScore", 0)
+                    put("category", "Recorded Call")
+                    put("rationale", "Call audio recording captured by AegisCall Native Telecom Recorder.")
+                    if (base64Audio != null) {
+                        put("recordingBase64", base64Audio)
+                        put("recordingMimeType", "audio/mp4")
+                        put("recordingFileName", file.name)
+                    }
+                }
+
+                val reqBody = payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+                val req = Request.Builder().url(endpoint).post(reqBody).build()
+                httpClient.newCall(req).execute().use { resp ->
+                    Log.i(TAG, "Recording email auto-forward status: ${resp.code}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not auto-forward recording email: ${e.message}")
+            }
+        }
     }
 
     fun getSavedRecordings(context: Context): List<RecordedCallItem> {
