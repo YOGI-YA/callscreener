@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Settings, ShieldCheck, Server, Smartphone, ExternalLink, HelpCircle,
-  Check, RefreshCw, AlertTriangle, Phone, Mic, Play, Trash2
+  Check, RefreshCw, AlertTriangle, Phone, Mic, Play, Trash2, Mail, Send, CheckCircle2
 } from 'lucide-react';
 import { CapacitorService } from '../services/capacitorService';
 import { ApiService } from '../services/api';
@@ -31,6 +31,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [greetingNotice, setGreetingNotice] = useState<string | null>(null);
 
+  // Recording Email Forwarding State
+  const [emailForwarding, setEmailForwarding] = useState<{
+    enabled: boolean;
+    toEmail: string;
+    forwardSpamOnly: boolean;
+    autoForwardOnDisconnect: boolean;
+  }>({
+    enabled: true,
+    toEmail: '',
+    forwardSpamOnly: false,
+    autoForwardOnDisconnect: true
+  });
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+  const [emailNotice, setEmailNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<any>(null);
@@ -39,6 +55,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
     CapacitorService.checkDialerRole().then((res) => setDialerGranted(res.isDefaultDialer));
     CapacitorService.getScreeningMode().then((res) => setScreeningModeState(res.mode));
     CapacitorService.getCustomGreeting().then(setCustomGreetingInfo);
+    ApiService.getEmailSettings().then((settings) => {
+      if (settings) {
+        setEmailForwarding({
+          enabled: settings.enabled ?? true,
+          toEmail: settings.toEmail || '',
+          forwardSpamOnly: settings.forwardSpamOnly ?? false,
+          autoForwardOnDisconnect: settings.autoForwardOnDisconnect ?? true
+        });
+      }
+    });
   }, []);
 
   const handleToggleScreeningMode = async (mode: 'AI_ASSISTANT' | 'PERSONAL_VOICEMAIL') => {
@@ -130,6 +156,33 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
     setCustomGreetingInfo({ hasGreeting: false, durationSeconds: 0, filePath: '' });
     setGreetingNotice('Greeting removed');
     setTimeout(() => setGreetingNotice(null), 2500);
+  };
+
+  const handleSaveEmailSettings = async () => {
+    CapacitorService.triggerHapticFeedback();
+    setIsSavingEmail(true);
+    await ApiService.saveEmailSettings(emailForwarding);
+    setIsSavingEmail(false);
+    setEmailNotice({ type: 'success', message: 'Email forwarding preferences saved successfully!' });
+    setTimeout(() => setEmailNotice(null), 3500);
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!emailForwarding.toEmail) {
+      setEmailNotice({ type: 'error', message: 'Please specify a destination email address.' });
+      setTimeout(() => setEmailNotice(null), 3500);
+      return;
+    }
+    CapacitorService.triggerHapticFeedback();
+    setIsSendingTestEmail(true);
+    const res = await ApiService.sendTestEmail(emailForwarding.toEmail);
+    setIsSendingTestEmail(false);
+    if (res.success) {
+      setEmailNotice({ type: 'success', message: `Verification test email sent to ${emailForwarding.toEmail}` });
+    } else {
+      setEmailNotice({ type: 'error', message: res.error || 'Failed to dispatch test email.' });
+    }
+    setTimeout(() => setEmailNotice(null), 4000);
   };
 
   const handleSaveApiUrl = () => {
@@ -564,6 +617,134 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
             </div>
           )}
         </div>
+      </div>
+
+      {/* Standard Recording & Mail Forwarding */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Mail size={18} color="var(--accent-glow)" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>Recording Mail Forwarding</div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Auto-forward HD call audio & transcripts to inbox</div>
+            </div>
+          </div>
+          <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={emailForwarding.enabled}
+              onChange={(e) => setEmailForwarding({ ...emailForwarding, enabled: e.target.checked })}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span
+              style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundColor: emailForwarding.enabled ? 'var(--accent-glow)' : 'rgba(255,255,255,0.15)',
+                borderRadius: 24,
+                transition: '0.3s'
+              }}
+            />
+            <span
+              style={{
+                position: 'absolute',
+                left: emailForwarding.enabled ? 22 : 2,
+                top: 2,
+                width: 20,
+                height: 20,
+                backgroundColor: '#fff',
+                borderRadius: '50%',
+                transition: '0.3s',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+              }}
+            />
+          </label>
+        </div>
+
+        {emailForwarding.enabled && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border-subtle)', paddingTop: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                Recipient Email Address
+              </label>
+              <input
+                type="email"
+                placeholder="your-name@domain.com"
+                value={emailForwarding.toEmail}
+                onChange={(e) => setEmailForwarding({ ...emailForwarding, toEmail: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  background: 'rgba(0,0,0,0.35)',
+                  border: '1px solid var(--border-medium)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.84rem',
+                  color: '#fff'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.78rem', color: '#cbd5e1' }}>
+                <input
+                  type="checkbox"
+                  checked={emailForwarding.autoForwardOnDisconnect}
+                  onChange={(e) => setEmailForwarding({ ...emailForwarding, autoForwardOnDisconnect: e.target.checked })}
+                />
+                <span>Automatically email recording & transcript when screened call ends</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.78rem', color: '#cbd5e1' }}>
+                <input
+                  type="checkbox"
+                  checked={emailForwarding.forwardSpamOnly}
+                  onChange={(e) => setEmailForwarding({ ...emailForwarding, forwardSpamOnly: e.target.checked })}
+                />
+                <span>Forward suspicious & spam calls only (skip verified safe callers)</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <button
+                onClick={handleSaveEmailSettings}
+                disabled={isSavingEmail}
+                className="btn-primary"
+                style={{ flex: 1, padding: '9px 12px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <Check size={14} />
+                <span>{isSavingEmail ? 'Saving...' : 'Save Settings'}</span>
+              </button>
+
+              <button
+                onClick={handleSendTestEmail}
+                disabled={isSendingTestEmail}
+                className="btn-secondary"
+                style={{ padding: '9px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                title="Send a sample recording report to verify your email pipeline"
+              >
+                <Send size={13} className={isSendingTestEmail ? 'spin' : ''} />
+                <span>{isSendingTestEmail ? 'Sending...' : 'Send Test Email'}</span>
+              </button>
+            </div>
+
+            {emailNotice && (
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: emailNotice.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  border: `1px solid ${emailNotice.type === 'success' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                  color: emailNotice.type === 'success' ? '#34d399' : '#f87171'
+                }}
+              >
+                {emailNotice.message}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Backend API Configuration */}
