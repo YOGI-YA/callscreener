@@ -53,7 +53,7 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
         if (status == TextToSpeech.SUCCESS) {
             tts?.language = Locale.US
 
-            // Direct TTS audio into telephony / voice communication audio stream
+            // Direct TTS audio strictly into voice communication stream
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 val audioAttributes = AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
@@ -70,16 +70,22 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                                 tts?.stop()
                                 return@post
                             }
-                            // Unmute uplink so audio transmits to the other party on the phone call
+                            // 1. Unmute uplink so audio transmits clearly to the remote party on the phone call
                             AegisInCallService.serviceInstance?.setMuted(false)
                             audioManager?.isMicrophoneMute = false
                             audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
 
-                            // Ensure optimal volume on the voice call stream
+                            // 2. Ensure remote caller gets loud and clear signal without blasting our side
                             val maxVol = audioManager?.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL) ?: 0
-                            if (maxVol > 0) {
-                                audioManager?.setStreamVolume(AudioManager.STREAM_VOICE_CALL, (maxVol * 0.95).toInt(), 0)
+                            if (maxVol > 0 && !TelecomAudioRouter.isListenIn()) {
+                                // If local user is not actively monitoring, keep local downlink suppressed
+                                // while uplink transmits to caller
+                                AegisInCallService.appContext.let { ctx ->
+                                    TelecomAudioRouter.configureScreeningAudioRoute(ctx, AegisInCallService.serviceInstance)
+                                }
                             }
+
+                            CallScreeningPlugin.broadcastAudioRouteState(transmittingToCaller = true, localMuted = !TelecomAudioRouter.isListenIn())
                         } catch (e: Exception) {
                             Log.w(TAG, "Audio routing onStart error: ${e.message}")
                         }
@@ -89,7 +95,8 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                     mainHandler.post {
                         if (!AegisInCallService.isScreeningActive) return@post
                         try {
-                            audioManager?.mode = AudioManager.MODE_IN_CALL
+                            audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
+                            CallScreeningPlugin.broadcastAudioRouteState(transmittingToCaller = false, localMuted = !TelecomAudioRouter.isListenIn())
                         } catch (e: Exception) {
                             Log.w(TAG, "Audio routing onDone error: ${e.message}")
                         }
@@ -100,6 +107,7 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
                     mainHandler.post {
+                        CallScreeningPlugin.broadcastAudioRouteState(transmittingToCaller = false, localMuted = !TelecomAudioRouter.isListenIn())
                         if (AegisInCallService.isScreeningActive) {
                             startListeningForCaller()
                         }
@@ -107,7 +115,7 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                 }
             })
             isTtsReady = true
-            Log.i(TAG, "TextToSpeech engine initialized successfully")
+            Log.i(TAG, "TextToSpeech engine initialized successfully for caller uplink transmission")
             applyHighFidelityVoice(Locale.US)
         } else {
             Log.e(TAG, "Failed to initialize TextToSpeech engine")

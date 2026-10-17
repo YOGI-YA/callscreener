@@ -143,6 +143,17 @@ class CallScreeningPlugin : Plugin() {
             }
         }
 
+        fun broadcastAudioRouteState(transmittingToCaller: Boolean, localMuted: Boolean) {
+            instance?.let { plugin ->
+                val js = JSObject().apply {
+                    put("transmittingToCaller", transmittingToCaller)
+                    put("localMuted", localMuted)
+                    put("isListenIn", !localMuted)
+                }
+                plugin.notifyListeners("audioRouteStateChanged", js, true)
+            }
+        }
+
         fun broadcastRecordingSaved(filePath: String) {
             instance?.let { plugin ->
                 val js = JSObject().apply {
