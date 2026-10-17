@@ -840,4 +840,88 @@ export class CapacitorService {
       }
     }
   }
+
+  // --- AUDIO ROUTING & CALL MONITORING ---
+
+  public static async setListenIn(enable: boolean): Promise<{ success: boolean; isListenIn: boolean }> {
+    if (!this.isNative()) {
+      localStorage.setItem('aegis_mock_listen_in', String(enable));
+      return { success: true, isListenIn: enable };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.setListenIn) {
+        return await plugin.setListenIn({ enable });
+      }
+    } catch (e) {
+      console.warn('setListenIn failed:', e);
+    }
+    return { success: false, isListenIn: false };
+  }
+
+  public static async getAudioRoutingState(): Promise<{
+    isListenIn: boolean;
+    isSuppressed: boolean;
+    isScreeningActive: boolean;
+    transmittingToCaller: boolean;
+  }> {
+    if (!this.isNative()) {
+      const isListen = localStorage.getItem('aegis_mock_listen_in') !== 'false';
+      return {
+        isListenIn: isListen,
+        isSuppressed: !isListen,
+        isScreeningActive: true,
+        transmittingToCaller: true
+      };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.getAudioRoutingState) {
+        return await plugin.getAudioRoutingState();
+      }
+    } catch (e) {
+      console.warn('getAudioRoutingState failed:', e);
+    }
+    return {
+      isListenIn: false,
+      isSuppressed: true,
+      isScreeningActive: false,
+      transmittingToCaller: false
+    };
+  }
+
+  public static async configureScreeningAudio(): Promise<{ success: boolean; transmittingToCaller: boolean }> {
+    if (!this.isNative()) {
+      return { success: true, transmittingToCaller: true };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.configureScreeningAudio) {
+        return await plugin.configureScreeningAudio();
+      }
+    } catch (e) {
+      console.warn('configureScreeningAudio failed:', e);
+    }
+    return { success: false, transmittingToCaller: false };
+  }
+
+  public static addAudioRouteStateListener(
+    callback: (data: { transmittingToCaller: boolean; localMuted: boolean; isListenIn: boolean }) => void
+  ): () => void {
+    if (!this.isNative()) {
+      return () => {};
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.addListener) {
+        const handlePromise = plugin.addListener('audioRouteStateChanged', callback);
+        return () => {
+          handlePromise.then((handle: any) => handle?.remove?.());
+        };
+      }
+    } catch (e) {
+      console.warn('addAudioRouteStateListener failed:', e);
+    }
+    return () => {};
+  }
 }
