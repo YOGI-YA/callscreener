@@ -413,6 +413,25 @@ export class CapacitorService {
     return null;
   }
 
+  public static async forwardRecordingEmail(params: {
+    filePath: string;
+    phoneNumber?: string;
+    durationSeconds?: number;
+  }): Promise<{ success: boolean; message?: string }> {
+    if (!this.isNative()) {
+      return { success: true, message: 'Mock email forward dispatched' };
+    }
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.forwardRecordingEmail) {
+        return await plugin.forwardRecordingEmail(params);
+      }
+    } catch (e) {
+      console.error('forwardRecordingEmail failed:', e);
+    }
+    return { success: false };
+  }
+
   // Personal Voicemail & Custom Greeting Methods
   public static async saveCustomGreeting(audioBase64: string): Promise<{ success: boolean }> {
     if (!this.isNative()) {

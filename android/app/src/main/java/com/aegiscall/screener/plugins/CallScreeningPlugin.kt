@@ -870,5 +870,47 @@ class CallScreeningPlugin : Plugin() {
             put("localMuted", !TelecomAudioRouter.isListenIn())
         })
     }
+
+    // --- NATIVE CALL RECORDINGS EMAIL DISPATCH ---
+
+    @PluginMethod
+    fun getRecordingBase64(call: PluginCall) {
+        val filePath = call.getString("filePath")
+        if (filePath.isNullOrBlank()) {
+            call.reject("filePath is required")
+            return
+        }
+        val base64 = CallRecorderManager.getRecordingBase64(context, filePath)
+        if (base64 != null) {
+            call.resolve(JSObject().apply {
+                put("success", true)
+                put("base64", base64)
+            })
+        } else {
+            call.reject("Could not read recording file or file does not exist")
+        }
+    }
+
+    @PluginMethod
+    fun forwardRecordingEmail(call: PluginCall) {
+        val filePath = call.getString("filePath")
+        val phoneNumber = call.getString("phoneNumber") ?: "Unknown"
+        val durationSeconds = call.getInt("durationSeconds")?.toLong() ?: 0L
+
+        if (filePath.isNullOrBlank()) {
+            call.reject("filePath is required")
+            return
+        }
+
+        try {
+            CallRecorderManager.triggerEmailForwarding(context, filePath, phoneNumber, durationSeconds)
+            call.resolve(JSObject().apply {
+                put("success", true)
+                put("message", "Email forward triggered successfully")
+            })
+        } catch (e: Exception) {
+            call.reject("Failed to forward recording email: ${e.message}")
+        }
+    }
 }
 
