@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   Search, Filter, Trash2, ShieldPlus, ShieldX, Clock, Phone, AlertCircle,
-  Radio, Play, Pause, Download, Volume2, FileAudio, CheckCircle2
+  Radio, Play, Pause, Download, Volume2, FileAudio, CheckCircle2, Mail, Send
 } from 'lucide-react';
 import { ScreeningResult, ScreeningVerdict, RecordedCallItem } from '../types';
 import { RiskBadge } from './RiskBadge';
 import { CapacitorService } from '../services/capacitorService';
+import { ApiService } from '../services/api';
 
 interface CallLogsTabProps {
   logs: ScreeningResult[];
@@ -68,6 +69,53 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
         setAudioNotice(null);
       }, (item.durationSeconds || 10) * 1000);
     }
+  };
+
+  const [emailingId, setEmailingId] = useState<string | null>(null);
+
+  const handleEmailCallLog = async (log: ScreeningResult) => {
+    CapacitorService.triggerHapticFeedback();
+    setEmailingId(log.id);
+    const res = await ApiService.forwardRecordingEmail({
+      phoneNumber: log.phoneNumber,
+      callerName: log.callerName,
+      timestamp: log.timestamp,
+      verdict: log.verdict,
+      riskScore: log.riskScore,
+      category: log.category,
+      rationale: log.rationale,
+      transcript: (log.metadata as any)?.transcript || (log.metadata as any)?.detectedKeywords?.join(', ')
+    });
+    setEmailingId(null);
+    if (res.success) {
+      setAudioNotice(`Screening report for ${log.phoneNumber} forwarded to your email!`);
+    } else {
+      setAudioNotice(res.error || 'Failed to email screening report.');
+    }
+    setTimeout(() => setAudioNotice(null), 3500);
+  };
+
+  const handleEmailRecording = async (rec: RecordedCallItem) => {
+    CapacitorService.triggerHapticFeedback();
+    setEmailingId(rec.id);
+    const res = await ApiService.forwardRecordingEmail({
+      phoneNumber: rec.phoneNumber,
+      callerName: `Call Recording with ${rec.phoneNumber}`,
+      timestamp: rec.timestamp,
+      durationSeconds: rec.durationSeconds,
+      verdict: 'ALLOW',
+      riskScore: 0,
+      category: 'Saved Recording',
+      rationale: 'Exported call audio recording from AegisCall storage archive.',
+      recordingFileName: rec.fileName
+    });
+    setEmailingId(null);
+    if (res.success) {
+      setAudioNotice(`Recording for ${rec.phoneNumber} forwarded to your email!`);
+    } else {
+      setAudioNotice(res.error || 'Failed to email call recording.');
+    }
+    setTimeout(() => setAudioNotice(null), 3500);
   };
 
   const filteredLogs = logs.filter((log) => {
@@ -364,6 +412,28 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
                           <ShieldPlus size={11} /> Whitelist
                         </button>
                       )}
+
+                      <button
+                        onClick={() => handleEmailCallLog(log)}
+                        disabled={emailingId === log.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '4px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'rgba(56, 189, 248, 0.12)',
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          color: '#38bdf8',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                        title="Forward screening report & transcript to your email"
+                      >
+                        <Mail size={11} className={emailingId === log.id ? 'spin' : ''} />
+                        <span>{emailingId === log.id ? 'Sending...' : 'Email'}</span>
+                      </button>
                     </div>
 
                     <button
@@ -502,13 +572,13 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
                       </div>
                     )}
 
-                    {/* File Path & Delete Action */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    {/* File Path & Email/Delete Action */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                       <span
                         style={{
                           fontSize: '0.68rem',
                           color: 'var(--text-muted)',
-                          maxWidth: '80%',
+                          maxWidth: '65%',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis'
@@ -517,13 +587,36 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
                       >
                         📁 {rec.fileName}
                       </span>
-                      <button
-                        onClick={() => handleDeleteRecording(rec.filePath)}
-                        style={{ color: 'var(--color-danger)', padding: 4 }}
-                        title="Delete recording"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          onClick={() => handleEmailRecording(rec)}
+                          disabled={emailingId === rec.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '3px 8px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'rgba(56, 189, 248, 0.12)',
+                            border: '1px solid rgba(56, 189, 248, 0.25)',
+                            color: '#38bdf8',
+                            fontSize: '0.70rem',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                          title="Forward audio recording to email"
+                        >
+                          <Mail size={11} className={emailingId === rec.id ? 'spin' : ''} />
+                          <span>{emailingId === rec.id ? 'Sending...' : 'Email Audio'}</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRecording(rec.filePath)}
+                          style={{ color: 'var(--color-danger)', padding: 4 }}
+                          title="Delete recording"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
