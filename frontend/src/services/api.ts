@@ -454,4 +454,97 @@ export class ApiService {
     CapacitorService.syncRules(rules).catch(() => {});
     return true;
   }
+
+  // --- RECORDING EMAIL FORWARDING ---
+
+  public static async getEmailSettings(): Promise<any> {
+    try {
+      const baseUrl = this.getBaseUrl();
+      if (baseUrl) {
+        const res = await fetch(this.formatUrl('/api/recordings/email-settings'));
+        if (res.ok) {
+          const json = await res.json();
+          return json.settings;
+        }
+      }
+    } catch (e) {
+      console.warn('getEmailSettings network error, reading local fallback', e);
+    }
+    const local = localStorage.getItem('aegis_email_forwarding_settings');
+    return local ? JSON.parse(local) : {
+      enabled: true,
+      toEmail: '',
+      forwardSpamOnly: false,
+      autoForwardOnDisconnect: true
+    };
+  }
+
+  public static async saveEmailSettings(settings: any): Promise<boolean> {
+    localStorage.setItem('aegis_email_forwarding_settings', JSON.stringify(settings));
+    try {
+      const baseUrl = this.getBaseUrl();
+      if (baseUrl) {
+        const res = await fetch(this.formatUrl('/api/recordings/email-settings'), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings)
+        });
+        return res.ok;
+      }
+    } catch (e) {
+      console.warn('saveEmailSettings network error', e);
+    }
+    return true;
+  }
+
+  public static async forwardRecordingEmail(payload: {
+    to?: string;
+    phoneNumber: string;
+    callerName?: string;
+    timestamp?: number | string;
+    durationSeconds?: number;
+    verdict?: string;
+    riskScore?: number;
+    category?: string;
+    rationale?: string;
+    transcript?: any;
+    recordingBase64?: string;
+    recordingFileName?: string;
+  }): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      const baseUrl = this.getBaseUrl();
+      if (baseUrl) {
+        const res = await fetch(this.formatUrl('/api/recordings/forward-email'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        return { success: data.success, messageId: data.messageId, error: data.error };
+      }
+    } catch (e: any) {
+      console.warn('forwardRecordingEmail error', e);
+      return { success: false, error: e.message };
+    }
+    return { success: true, messageId: `mock_${Date.now()}` };
+  }
+
+  public static async sendTestEmail(toEmail?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const baseUrl = this.getBaseUrl();
+      if (baseUrl) {
+        const res = await fetch(this.formatUrl('/api/recordings/test-email'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ toEmail })
+        });
+        const data = await res.json();
+        return { success: data.success, error: data.error };
+      }
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+    return { success: true };
+  }
 }
+
