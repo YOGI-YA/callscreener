@@ -1,4 +1,5 @@
 import { ScreeningResult, CallScreeningStats } from '../types/index.js';
+import { EmailService } from './emailService.js';
 
 export class CallLogStorage {
   private static logs: ScreeningResult[] = [];
@@ -126,6 +127,28 @@ export class CallLogStorage {
     // Keep max 200 logs
     if (this.logs.length > 200) {
       this.logs.pop();
+    }
+
+    // Automated recording / call email forwarding dispatch
+    try {
+      const emailSettings = EmailService.getSettings();
+      if (emailSettings.enabled && emailSettings.toEmail && emailSettings.autoForwardOnDisconnect) {
+        EmailService.sendRecordingEmail({
+          to: emailSettings.toEmail,
+          phoneNumber: result.phoneNumber,
+          callerName: result.callerName,
+          timestamp: result.timestamp,
+          verdict: result.verdict,
+          riskScore: result.riskScore,
+          category: result.category,
+          rationale: result.rationale,
+          transcript: (result.metadata as any)?.transcript || (result.metadata as any)?.detectedKeywords?.join(', ')
+        }).catch((err: any) => {
+          console.warn('Auto-forward email error:', err?.message);
+        });
+      }
+    } catch (e: any) {
+      console.warn('Could not trigger email auto-forward:', e.message);
     }
   }
 
