@@ -34,6 +34,11 @@ class AegisInCallService : InCallService() {
             isScreeningActive = false
             CustomGreetingManager.stopPlayback()
             AiVoiceScreeningEngine.stop()
+            try {
+                TelecomAudioRouter.resetAudio(appContext)
+            } catch (e: Exception) {
+                // ignore
+            }
             if (CallRecorderManager.isRecording) {
                 val saved = CallRecorderManager.stopRecording(appContext)
                 if (saved != null) CallScreeningPlugin.broadcastRecordingSaved(saved)
@@ -52,20 +57,8 @@ class AegisInCallService : InCallService() {
             // Answer the call programmatically to screen it
             activeCall?.answer(VideoProfile.STATE_AUDIO_ONLY)
 
-            // Unmute the mic/uplink so caller hears the greeting clearly
-            try {
-                serviceInstance?.setMuted(false)
-            } catch (e: Exception) {
-                Log.w(TAG, "Could not configure initial mute: ${e.message}")
-            }
-
-            // Route audio to earpiece by default so room loudspeaker doesn't blast
-            try {
-                @Suppress("DEPRECATION")
-                serviceInstance?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
-            } catch (e: Exception) {
-                Log.w(TAG, "Could not set audio route for screening: ${e.message}")
-            }
+            // Configure audio routing: Uplink transmitting to caller, local downlink speaker suppressed
+            TelecomAudioRouter.configureScreeningAudioRoute(appContext, serviceInstance)
 
             // Route between Personal Voice Voicemail vs AI Assistant
             if (CustomGreetingManager.activeScreeningMode == "PERSONAL_VOICEMAIL" && CustomGreetingManager.hasCustomGreeting(appContext)) {
@@ -98,6 +91,14 @@ class AegisInCallService : InCallService() {
             }
         }
 
+        fun toggleListenIn(enable: Boolean) {
+            TelecomAudioRouter.setListenIn(appContext, enable, serviceInstance)
+            CallScreeningPlugin.broadcastAudioRouteState(
+                transmittingToCaller = AiVoiceScreeningEngine.isBotVoiceEnabled,
+                localMuted = !enable
+            )
+        }
+
         fun sendQuickReply(replyText: String) {
             if (isScreeningActive) {
                 try {
@@ -114,14 +115,8 @@ class AegisInCallService : InCallService() {
             isScreeningActive = false
             CustomGreetingManager.stopPlayback()
             AiVoiceScreeningEngine.stop()
-            // Unmute mic so user can immediately talk to caller
-            try {
-                serviceInstance?.setMuted(false)
-                @Suppress("DEPRECATION")
-                serviceInstance?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
-            } catch (e: Exception) {
-                Log.w(TAG, "Could not reset audio route to earpiece or unmute: ${e.message}")
-            }
+            // Restore normal two-way call audio so user and caller talk directly
+            TelecomAudioRouter.restoreNormalCallAudio(appContext, serviceInstance)
             CallScreeningPlugin.broadcastCallPickedUp()
             CallScreeningPlugin.broadcastCallAudioState(muted = false, speakerOn = false)
 
@@ -239,6 +234,11 @@ class AegisInCallService : InCallService() {
                     Call.STATE_DISCONNECTED -> {
                         isScreeningActive = false
                         AiVoiceScreeningEngine.stop()
+                        try {
+                            TelecomAudioRouter.resetAudio(this@AegisInCallService)
+                        } catch (e: Exception) {
+                            // ignore
+                        }
                         if (CallRecorderManager.isRecording) {
                             val saved = CallRecorderManager.stopRecording(this@AegisInCallService)
                             if (saved != null) CallScreeningPlugin.broadcastRecordingSaved(saved)
@@ -257,6 +257,11 @@ class AegisInCallService : InCallService() {
         Log.i(TAG, "Call Removed")
         isScreeningActive = false
         AiVoiceScreeningEngine.stop()
+        try {
+            TelecomAudioRouter.resetAudio(this)
+        } catch (e: Exception) {
+            // ignore
+        }
         if (CallRecorderManager.isRecording) {
             val saved = CallRecorderManager.stopRecording(this)
             if (saved != null) CallScreeningPlugin.broadcastRecordingSaved(saved)
