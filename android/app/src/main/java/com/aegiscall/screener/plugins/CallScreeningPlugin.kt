@@ -16,6 +16,7 @@ import com.aegiscall.screener.models.ScreeningData
 import com.aegiscall.screener.telecom.AegisInCallService
 import com.aegiscall.screener.telecom.CallHistoryStorage
 import com.aegiscall.screener.telecom.CallRecorderManager
+import com.aegiscall.screener.telecom.TelecomAudioRouter
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -831,4 +832,43 @@ class CallScreeningPlugin : Plugin() {
             call.resolve(JSObject().apply { put("success", true) })
         }
     }
+
+    // --- AUDIO ROUTING & MONITORING ---
+
+    @PluginMethod
+    fun setListenIn(call: PluginCall) {
+        val enable = call.getBoolean("enable", false) ?: false
+        AegisInCallService.toggleListenIn(enable)
+        call.resolve(JSObject().apply {
+            put("success", true)
+            put("isListenIn", enable)
+            put("transmittingToCaller", true)
+        })
+    }
+
+    @PluginMethod
+    fun getAudioRoutingState(call: PluginCall) {
+        val isListenIn = TelecomAudioRouter.isListenIn()
+        val isSuppressed = TelecomAudioRouter.isSuppressed()
+        val isScreening = AegisInCallService.isScreeningActive
+        call.resolve(JSObject().apply {
+            put("isListenIn", isListenIn)
+            put("isSuppressed", isSuppressed)
+            put("isScreeningActive", isScreening)
+            put("transmittingToCaller", isScreening)
+        })
+    }
+
+    @PluginMethod
+    fun configureScreeningAudio(call: PluginCall) {
+        AegisInCallService.serviceInstance?.let { service ->
+            TelecomAudioRouter.configureScreeningAudioRoute(context, service)
+        }
+        call.resolve(JSObject().apply {
+            put("success", true)
+            put("transmittingToCaller", true)
+            put("localMuted", !TelecomAudioRouter.isListenIn())
+        })
+    }
 }
+
