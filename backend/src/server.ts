@@ -3,6 +3,7 @@ import cors from 'cors';
 import { screeningRouter } from './routes/screeningRoutes.js';
 import { logRouter } from './routes/logRoutes.js';
 import { healthRouter } from './routes/healthRoutes.js';
+import { recordingRouter } from './routes/recordingRoutes.js';
 
 export function createServer(): Express {
   const app = express();
@@ -13,7 +14,7 @@ export function createServer(): Express {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-api-token']
   }));
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '25mb' }));
 
   // Request logger in dev
   app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -31,6 +32,7 @@ export function createServer(): Express {
   app.use('/api/health', healthRouter);
   app.use('/api', screeningRouter);
   app.use('/api/logs', logRouter);
+  app.use('/api/recordings', recordingRouter);
 
   // Root welcome endpoint
   app.get('/', (_req: Request, res: Response) => {
