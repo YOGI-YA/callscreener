@@ -87,7 +87,11 @@ AegisCall AI is an intelligent Android call-screening solution that intercepts i
    - Block malicious toll-fraud prefixes (`+1-900`, `+1-976`, satellite fraud numbers) instantly.
 6. **Cloud Android Build (No Local Android Studio Required)**:
    - Automated GitHub Actions workflow builds signed/debug `.apk` packages in the cloud.
-7. **Security**:
+7. **Caller-End Audio Routing & Local Downlink Silencing ("AI Talks on Caller End, Not Ours")**:
+   - **Caller End Transmission**: During active AI screening, speech synthesis (TextToSpeech) and voicemail greetings are transmitted through the telephony voice call stream directly to the remote caller on the other end of the line.
+   - **Local Phone Silencing**: Local loudspeaker and earpiece audio outputs are suppressed on our end during automated screening so the recipient is never disturbed or embarrassed by bot speech.
+   - **Silent "Listen In" Monitor**: Device owners can tap the *Listen In* monitor at any time to hear caller chatter without unmuting the local microphone or leaking room noise to the caller.
+8. **Security**:
    - All AI API keys and secrets stay securely on the Node.js backend.
 
 ---
