@@ -885,7 +885,7 @@ export class CapacitorService {
     transmittingToCaller: boolean;
   }> {
     if (!this.isNative()) {
-      const isListen = localStorage.getItem('aegis_mock_listen_in') !== 'false';
+      const isListen = localStorage.getItem('aegis_mock_listen_in') === 'true';
       return {
         isListenIn: isListen,
         isSuppressed: !isListen,
