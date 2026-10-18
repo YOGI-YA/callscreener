@@ -73,19 +73,21 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                             // 1. Unmute uplink so audio transmits clearly to the remote party on the phone call
                             AegisInCallService.serviceInstance?.setMuted(false)
                             audioManager?.isMicrophoneMute = false
+                            @Suppress("DEPRECATION")
+                            audioManager?.isSpeakerphoneOn = false
                             audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
 
                             // 2. Ensure remote caller gets loud and clear signal without blasting our side
-                            val maxVol = audioManager?.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL) ?: 0
-                            if (maxVol > 0 && !TelecomAudioRouter.isListenIn()) {
-                                // If local user is not actively monitoring, keep local downlink suppressed
-                                // while uplink transmits to caller
+                            if (!TelecomAudioRouter.isListenIn()) {
                                 AegisInCallService.appContext.let { ctx ->
                                     TelecomAudioRouter.configureScreeningAudioRoute(ctx, AegisInCallService.serviceInstance)
                                 }
                             }
 
-                            CallScreeningPlugin.broadcastAudioRouteState(transmittingToCaller = true, localMuted = !TelecomAudioRouter.isListenIn())
+                            CallScreeningPlugin.broadcastAudioRouteState(
+                                transmittingToCaller = true,
+                                localMuted = !TelecomAudioRouter.isListenIn()
+                            )
                         } catch (e: Exception) {
                             Log.w(TAG, "Audio routing onStart error: ${e.message}")
                         }
