@@ -85,6 +85,12 @@ object CustomGreetingManager {
 
             // Ensure telecom audio routing directs greeting to caller and silences local speaker
             TelecomAudioRouter.configureScreeningAudioRoute(context, AegisInCallService.serviceInstance)
+            AegisInCallService.serviceInstance?.setMuted(false)
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            audioManager.isMicrophoneMute = false
+            @Suppress("DEPRECATION")
+            audioManager.isSpeakerphoneOn = false
+
             CallScreeningPlugin.broadcastAudioRouteState(transmittingToCaller = true, localMuted = !TelecomAudioRouter.isListenIn())
 
             val player = MediaPlayer()
@@ -100,6 +106,7 @@ object CustomGreetingManager {
                 @Suppress("DEPRECATION")
                 player.setAudioStreamType(AudioManager.STREAM_VOICE_CALL)
             }
+            player.setVolume(1.0f, 1.0f)
 
             player.setDataSource(file.absolutePath)
             player.setOnCompletionListener {
