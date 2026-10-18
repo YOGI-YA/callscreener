@@ -56,7 +56,9 @@ class AiCallScreeningService : CallScreeningService() {
         if (fastRuleResult != null) {
             Log.i(TAG, "Instant local rule match: ${fastRuleResult.verdict} (${fastRuleResult.rationale})")
             val callResponse = FastLocalRulesEngine.buildAndroidCallResponse(fastRuleResult)
-            respondToCallSafely(callDetails, callResponse)
+            if (callResponse != null) {
+                respondToCallSafely(callDetails, callResponse)
+            }
             CallHistoryStorage.saveCall(applicationContext, fastRuleResult)
             CallScreeningPlugin.broadcastScreenedCall(fastRuleResult)
             return
@@ -88,7 +90,9 @@ class AiCallScreeningService : CallScreeningService() {
 
             Log.i(TAG, "Physical On-Device Verdict: ${screeningResult.verdict} [Score: ${screeningResult.riskScore}] by ${screeningResult.engine}")
             val androidResponse = FastLocalRulesEngine.buildAndroidCallResponse(screeningResult)
-            respondToCallSafely(callDetails, androidResponse)
+            if (androidResponse != null) {
+                respondToCallSafely(callDetails, androidResponse)
+            }
             CallHistoryStorage.saveCall(applicationContext, screeningResult)
             CallScreeningPlugin.broadcastScreenedCall(screeningResult)
         }

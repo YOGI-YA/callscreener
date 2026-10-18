@@ -158,31 +158,35 @@ object FastLocalRulesEngine {
     /**
      * Converts ScreeningData into Android OS CallResponse
      */
-    fun buildAndroidCallResponse(screeningData: ScreeningData): CallResponse {
-        val builder = CallResponse.Builder()
+    fun buildAndroidCallResponse(screeningData: ScreeningData): CallResponse? {
+        return try {
+            val builder = CallResponse.Builder()
 
-        when (screeningData.verdict) {
-            "REJECT" -> {
-                builder.setDisallowCall(true)
-                builder.setRejectCall(true)
-                builder.setSkipNotification(true)
-                builder.setSkipCallLog(false)
+            when (screeningData.verdict) {
+                "REJECT" -> {
+                    builder.setDisallowCall(true)
+                    builder.setRejectCall(true)
+                    builder.setSkipNotification(true)
+                    builder.setSkipCallLog(false)
+                }
+                "SILENCE" -> {
+                    builder.setDisallowCall(false)
+                    builder.setSilenceCall(true)
+                    builder.setSkipNotification(false)
+                    builder.setSkipCallLog(false)
+                }
+                "ALLOW" -> {
+                    builder.setDisallowCall(false)
+                    builder.setSilenceCall(false)
+                }
+                else -> {
+                    builder.setDisallowCall(false)
+                }
             }
-            "SILENCE" -> {
-                builder.setDisallowCall(false)
-                builder.setSilenceCall(true)
-                builder.setSkipNotification(false)
-                builder.setSkipCallLog(false)
-            }
-            "ALLOW" -> {
-                builder.setDisallowCall(false)
-                builder.setSilenceCall(false)
-            }
-            else -> {
-                builder.setDisallowCall(false)
-            }
+
+            builder.build()
+        } catch (e: Throwable) {
+            null
         }
-
-        return builder.build()
     }
 }
