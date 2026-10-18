@@ -1105,6 +1105,58 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
             </div>
           </div>
 
+          {/* Audio Route Indicator: AI talking on Caller End, Our End Silenced */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-md)',
+              background: 'rgba(15, 23, 42, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              fontSize: '0.73rem',
+              flexShrink: 0
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  color: isAiSpeaking ? '#34d399' : '#38bdf8',
+                  fontWeight: 700
+                }}
+              >
+                <PhoneCall size={13} />
+                <span>Caller End: {isAiSpeaking ? 'AI Speaking Live' : 'Listening for Caller'}</span>
+              </span>
+            </div>
+
+            <button
+              onClick={handleToggleListenIn}
+              style={{
+                background: listenIn ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                border: listenIn ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
+                color: listenIn ? '#38bdf8' : 'var(--text-muted)',
+                borderRadius: 'var(--radius-full)',
+                padding: '3px 10px',
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                transition: 'all 0.2s'
+              }}
+              title={listenIn ? 'Click to silence local audio' : 'Click to listen in silently on our end'}
+            >
+              {listenIn ? <Volume2 size={12} color="#38bdf8" /> : <VolumeX size={12} color="var(--text-muted)" />}
+              <span>{listenIn ? 'Listen In: Active' : 'Our End: Silenced'}</span>
+            </button>
+          </div>
+
           {/* Live Conversation Transcript Feed */}
           <div
             style={{
@@ -1139,8 +1191,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                       <User size={12} />
                     )}
                     {turn.sender === 'AI_ASSISTANT'
-                      ? (screeningMode === 'PERSONAL_VOICEMAIL' ? 'My Voice Greeting' : 'Aegis AI Assistant')
-                      : (incomingCall.callerName || 'Caller')}
+                      ? (screeningMode === 'PERSONAL_VOICEMAIL' ? 'My Voice Greeting (Caller End)' : 'Aegis AI (Speaking to Caller)')
+                      : `${incomingCall.callerName || 'Caller'} (Caller End)`}
                   </span>
                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
                     {turn.timestamp}
