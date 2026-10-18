@@ -117,7 +117,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
 
   // Scroll transcript to bottom
   useEffect(() => {
-    if (dialogueEndRef.current) {
+    if (dialogueEndRef.current && typeof dialogueEndRef.current.scrollIntoView === 'function') {
       dialogueEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [dialogue, callerStreamText]);
