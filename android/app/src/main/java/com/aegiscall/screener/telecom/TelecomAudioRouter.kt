@@ -24,13 +24,14 @@ object TelecomAudioRouter {
     private const val TAG = "TelecomAudioRouter"
 
     private var previousVolume: Int = -1
+    private var previousMusicVolume: Int = -1
     private var isDownlinkSuppressed: Boolean = false
     private var isListenInActive: Boolean = false
 
     /**
      * Configures audio routing specifically for active AI screening:
      * - Uplink is active and unmuted (remote caller hears AI speech).
-     * - Local downlink speaker is silenced/suppressed (local user hears nothing).
+     * - Local downlink speaker is silenced/suppressed (local user hears nothing on our end).
      */
     fun configureScreeningAudioRoute(context: Context, service: AegisInCallService?) {
         try {
@@ -43,48 +44,87 @@ object TelecomAudioRouter {
             service?.setMuted(false)
             audioManager.isMicrophoneMute = false
 
-            // 3. Save user's current voice call volume before suppressing
+            // 3. Strictly disable speakerphone so audio never blasts on our end
+            @Suppress("DEPRECATION")
+            audioManager.isSpeakerphoneOn = false
+
+            // 4. On Android 12+ (API 31+), direct communication device away from speaker
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                try {
+                    val devices = audioManager.availableCommunicationDevices
+                    val earpieceDevice = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
+                        ?: devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_TELEPHONY }
+                    if (earpieceDevice != null) {
+                        audioManager.setCommunicationDevice(earpieceDevice)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not set communication device: ${e.message}")
+                }
+            }
+
+            // 5. Save user's current volume levels before suppressing
             val currentVol = audioManager.getStreamVolume(AudioManager.STREAM_VOICE_CALL)
             if (previousVolume == -1) {
                 previousVolume = currentVol
             }
+            val currentMusicVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+            if (previousMusicVolume == -1) {
+                previousMusicVolume = currentMusicVol
+            }
 
-            // 4. Suppress local downlink audio so "our side" stays quiet
+            // 6. Suppress local downlink audio so "our side" stays quiet
             suppressLocalDownlink(audioManager)
 
-            // 5. Route away from external speakerphone by default
+            // 7. Route telephony away from external speakerphone
             @Suppress("DEPRECATION")
             service?.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
 
             isDownlinkSuppressed = true
             isListenInActive = false
 
-            Log.i(TAG, "Screening audio configured: Uplink transmitting to caller, local downlink suppressed")
+            Log.i(TAG, "Screening audio configured: AI talks to caller on remote line; local phone output silenced on our end")
         } catch (e: Exception) {
             Log.e(TAG, "Error configuring screening audio route: ${e.message}", e)
         }
     }
 
     /**
-     * Silences or reduces local voice call volume to near zero so the local user
-     * does not hear the screening audio.
+     * Silences or reduces local voice call and media volume so the device owner
+     * on our end does not hear the screening audio.
      */
     private fun suppressLocalDownlink(audioManager: AudioManager) {
         try {
+            @Suppress("DEPRECATION")
+            audioManager.isSpeakerphoneOn = false
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                audioManager.adjustStreamVolume(
-                    AudioManager.STREAM_VOICE_CALL,
-                    AudioManager.ADJUST_MUTE,
-                    0
-                )
+                try {
+                    audioManager.adjustStreamVolume(
+                        AudioManager.STREAM_VOICE_CALL,
+                        AudioManager.ADJUST_MUTE,
+                        0
+                    )
+                } catch (ignored: Exception) {}
+                try {
+                    audioManager.adjustStreamVolume(
+                        AudioManager.STREAM_MUSIC,
+                        AudioManager.ADJUST_MUTE,
+                        0
+                    )
+                } catch (ignored: Exception) {}
             } else {
                 audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, 0, 0)
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
             }
         } catch (e: Exception) {
             Log.w(TAG, "Could not mute stream volume, falling back to minimal: ${e.message}")
             try {
-                audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, 1, 0)
-            } catch (ignored: Exception) {}
+                audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, 0, 0)
+            } catch (ignored: Exception) {
+                try {
+                    audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, 1, 0)
+                } catch (ignored2: Exception) {}
+            }
         }
     }
 
@@ -145,6 +185,10 @@ object TelecomAudioRouter {
                 audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, previousVolume, 0)
                 previousVolume = -1
             }
+            if (previousMusicVolume >= 0) {
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, previousMusicVolume, 0)
+                previousMusicVolume = -1
+            }
 
             service?.setMuted(false)
             audioManager.isMicrophoneMute = false
@@ -164,16 +208,38 @@ object TelecomAudioRouter {
         try {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             audioManager.mode = AudioManager.MODE_NORMAL
+            @Suppress("DEPRECATION")
+            audioManager.isSpeakerphoneOn = false
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                try {
+                    audioManager.clearCommunicationDevice()
+                } catch (ignored: Exception) {}
+            }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                audioManager.adjustStreamVolume(
-                    AudioManager.STREAM_VOICE_CALL,
-                    AudioManager.ADJUST_UNMUTE,
-                    0
-                )
+                try {
+                    audioManager.adjustStreamVolume(
+                        AudioManager.STREAM_VOICE_CALL,
+                        AudioManager.ADJUST_UNMUTE,
+                        0
+                    )
+                } catch (ignored: Exception) {}
+                try {
+                    audioManager.adjustStreamVolume(
+                        AudioManager.STREAM_MUSIC,
+                        AudioManager.ADJUST_UNMUTE,
+                        0
+                    )
+                } catch (ignored: Exception) {}
             }
             if (previousVolume >= 0) {
                 audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, previousVolume, 0)
                 previousVolume = -1
+            }
+            if (previousMusicVolume >= 0) {
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, previousMusicVolume, 0)
+                previousMusicVolume = -1
             }
             isDownlinkSuppressed = false
             isListenInActive = false
