@@ -4,6 +4,7 @@ import { LLMScreeningEngine } from '../services/llmScreeningEngine.js';
 import { FastRulesEngine } from '../services/fastRulesEngine.js';
 import { CallLogStorage } from '../services/callLogStorage.js';
 import { IncomingCallPayload } from '../types/index.js';
+import { screeningRateLimiter } from '../middleware/rateLimiter.js';
 
 export const screeningRouter = Router();
 
@@ -24,7 +25,7 @@ const screenCallSchema = z.object({
  * POST /api/screen-call
  * Real-time screening endpoint invoked by Android CallScreeningService or Simulator
  */
-screeningRouter.post('/screen-call', async (req: Request, res: Response): Promise<void> => {
+screeningRouter.post('/screen-call', screeningRateLimiter.middleware(), async (req: Request, res: Response): Promise<void> => {
   try {
     const parseResult = screenCallSchema.safeParse(req.body);
     if (!parseResult.success) {
