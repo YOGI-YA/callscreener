@@ -1,7 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { EmailService } from '../services/emailService.js';
+import path from 'path';
 
 export const recordingRouter = Router();
+
+function sanitizeFileName(fileName?: string): string {
+  if (!fileName) return `call_rec_${Date.now()}.m4a`;
+  const base = path.basename(fileName).replace(/[\0\r\n\\\/:]/g, '_').trim();
+  return base || `call_rec_${Date.now()}.m4a`;
+}
 
 // POST /api/recordings/forward-email - Manual or automatic forward of call recording
 recordingRouter.post('/forward-email', async (req: Request, res: Response) => {
@@ -43,7 +50,7 @@ recordingRouter.post('/forward-email', async (req: Request, res: Response) => {
       transcript,
       recordingBase64,
       recordingMimeType,
-      recordingFileName
+      recordingFileName: sanitizeFileName(recordingFileName)
     });
 
     res.json({
