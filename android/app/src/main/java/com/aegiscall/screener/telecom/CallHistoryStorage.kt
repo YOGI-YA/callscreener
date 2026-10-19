@@ -24,8 +24,14 @@ object CallHistoryStorage {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val existingCalls = getCalls(context).toMutableList()
 
+        // Mask any sensitive PII (credit cards, SSN, OTPs) from rationale and name
+        val sanitizedCall = call.copy(
+            callerName = call.callerName?.let { SensitiveDataMasker.maskSensitiveText(it) },
+            rationale = SensitiveDataMasker.maskSensitiveText(call.rationale)
+        )
+
         // Insert newest at the beginning
-        existingCalls.add(0, call)
+        existingCalls.add(0, sanitizedCall)
 
         // Trim to max logs
         val trimmed = if (existingCalls.size > MAX_LOGS) existingCalls.subList(0, MAX_LOGS) else existingCalls

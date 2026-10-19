@@ -1,5 +1,6 @@
 import { ScreeningResult, CallScreeningStats } from '../types/index.js';
 import { EmailService } from './emailService.js';
+import { maskSensitiveText } from './sensitiveDataMasker.js';
 
 export class CallLogStorage {
   private static logs: ScreeningResult[] = [];
@@ -122,8 +123,14 @@ export class CallLogStorage {
   }
 
   public static addLog(result: ScreeningResult): void {
+    const sanitizedResult: ScreeningResult = {
+      ...result,
+      callerName: result.callerName ? maskSensitiveText(result.callerName) : result.callerName,
+      rationale: maskSensitiveText(result.rationale),
+    };
+
     // Insert at beginning
-    this.logs.unshift(result);
+    this.logs.unshift(sanitizedResult);
     // Keep max 200 logs
     if (this.logs.length > 200) {
       this.logs.pop();
