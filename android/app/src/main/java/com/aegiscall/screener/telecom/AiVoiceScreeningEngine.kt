@@ -284,6 +284,10 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                                 Log.i(TAG, "Caller said: ${defense.sanitizedText} (Injection detected: ${defense.isInjectionAttempt})")
                                 CallScreeningPlugin.broadcastCallerTranscript(defense.sanitizedText, isFinal = true)
 
+                                // Dynamically compute contextual interactive quick replies for UI
+                                val replies = ContextualRepliesGenerator.generateReplies(defense.sanitizedText, currentLanguage)
+                                CallScreeningPlugin.broadcastQuickReplies(replies)
+
                                 // Check Dialog State Machine for conversational follow-up
                                 if (isBotVoiceEnabled && !defense.isInjectionAttempt) {
                                     val followUp = dialogStateMachine.processCallerTurn(defense.sanitizedText, currentLanguage)

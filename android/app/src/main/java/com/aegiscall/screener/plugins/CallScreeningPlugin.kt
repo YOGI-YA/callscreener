@@ -107,6 +107,25 @@ class CallScreeningPlugin : Plugin() {
             }
         }
 
+        fun broadcastQuickReplies(replies: List<com.aegiscall.screener.telecom.ContextualRepliesGenerator.QuickReplyChip>) {
+            instance?.let { plugin ->
+                val array = JSArray()
+                for (chip in replies) {
+                    val obj = JSObject().apply {
+                        put("id", chip.id)
+                        put("label", chip.label)
+                        put("speechText", chip.speechText)
+                        put("actionType", chip.actionType)
+                    }
+                    array.put(obj)
+                }
+                val js = JSObject().apply {
+                    put("replies", array)
+                }
+                plugin.notifyListeners("quickRepliesAvailable", js, true)
+            }
+        }
+
         fun broadcastCallState(state: String) {
             instance?.let { plugin ->
                 val js = JSObject().apply {
