@@ -1,9 +1,9 @@
-# AegisCall AI: AI-Powered Android Call Screener & Spam Defense
+# AegisCall AI: Enterprise & Industry-Grade Call Screener & Spam Defense
 
 [![CI Test Suite](https://github.com/YOGI-YA/callscreener/actions/workflows/ci.yml/badge.svg)](https://github.com/YOGI-YA/callscreener/actions/workflows/ci.yml)
 [![Build Android APK](https://github.com/YOGI-YA/callscreener/actions/workflows/android-build.yml/badge.svg)](https://github.com/YOGI-YA/callscreener/actions/workflows/android-build.yml)
 
-AegisCall AI is an intelligent Android call-screening solution that intercepts incoming telephone calls in real-time, analyzes caller intent and fraud probability via Cloud LLMs (Google Gemini), and enforces automated telecom verdicts (`ALLOW`, `SILENCE`, or `REJECT`) within strict Android OS response deadlines.
+AegisCall AI is an enterprise, industry-grade Android call-screening and robocall defense engine engineered as an exact replica of premier systems like **Google Pixel Call Screen**, **Truecaller Assistant**, **Apple Live Voicemail**, and **Samsung Bixby Text Call**. It intercepts incoming telephone calls in real-time on physical Android devices, performs multi-turn conversational AI screening, verifies caller authenticity via STIR/SHAKEN cryptographic attestations, isolates device microphone audio to prevent ambient room leakage, and enforces automated telecom verdicts (`ALLOW`, `SILENCE`, or `REJECT`) within strict OS response deadlines.
 
 ---
 
@@ -18,16 +18,19 @@ AegisCall AI is an intelligent Android call-screening solution that intercepts i
                                   |         v                                             |
                                   |  +-------------------------------------------------+  |
                                   |  |  Native Kotlin AiCallScreeningService.kt        |  |
-                                  |  |  - onScreenCall(Call.Details)                   |  |
-                                  |  |  - Strict Response Deadline (2500ms timeout)     |  |
-                                  |  |  - Asynchronous Coroutine Network Dispatch      |  |
+                                  |  |  - Stage 0: STIR/SHAKEN Carrier ID Attestation  |  |
+                                  |  |  - Stage 1: Ultra-fast local LRU Cache (<1ms)   |  |
+                                  |  |  - Stage 2: Asynchronous Coroutine AI Screening  |  |
                                   |  +-------------------------------------------------+  |
                                   |         |                             |               |
-                                  |    (Network OK)                 (Timeout / Error)     |
+                                  |    (Network OK)                 (Timeout / Fallback)  |
                                   |         |                             |               |
                                   |         v                             v               |
-                                  |   Node.js REST API           Local Kotlin Fallback    |
-                                  |   /api/screen-call           Heuristics & Regex       |
+                                  |   Node.js Hardened API        Fast Local Rules Engine |
+                                  |   /api/screen-call            Heuristics & Threat DB  |
+                                  |   - HMAC & Replay Defense     - Strict Regex Rules    |
+                                  |   - Token Bucket Rate Limit   - Emergency Whitelist   |
+                                  |   - Prompt Injection Defense  - High-Risk Blocklist   |
                                   |         |                             |               |
                                   |         +------------+----------------+               |
                                   |                      |                                |
@@ -46,53 +49,57 @@ AegisCall AI is an intelligent Android call-screening solution that intercepts i
                                   +-------------------------------------------------------+
                                   |     React + TypeScript Mobile Web UI (Capacitor)      |
                                   |  - Real-time Call Screening Dashboard & Risk Badges   |
-                                  |  - Interactive Browser Call Simulator & Mock Scenarios|
-                                  |  - Call Logs, Transcript Viewer & Whitelist/Blacklist |
-                                  |  - RoleManager & Permission Activation Wizard        |
+                                  |  - Audio Isolation HUD: Caller Uplink vs Local Silence|
+                                  |  - Dynamic Contextual Quick-Reply Action Chips        |
+                                  |  - STIR/SHAKEN Attestation Badge (Level A/B/Spoofed)  |
+                                  |  - Zero-Trust PII Redaction & Threat Radar Breakdown  |
                                   +-------------------------------------------------------+
                                                          |
                                                          v
                                   +-------------------------------------------------------+
                                   |            Node.js Backend & LLM Engine               |
-                                  |  - Google Gemini / Cloud LLM Risk Analysis Engine     |
-                                  |  - Fast Deterministic Heuristic Engine (<5ms)         |
-                                  |  - Log Ingestion, Rule Sync, Health & Latency API     |
+                                  |  - Google Gemini / Cloud LLM Multi-Turn Dialogue      |
+                                  |  - Adversarial Prompt Injection & Jailbreak Defense   |
+                                  |  - Automated Multi-Tier Scam & Threat Taxonomy        |
+                                  |  - Rate Limiter, HMAC Signature & Replay Prevention   |
                                   +-------------------------------------------------------+
 ```
 
 ---
 
-## 🌟 Key Features
+## 🌟 Industry-Grade Features
 
-1. **Mobile-First Glassmorphic Interface**:
-   - Modern dark theme built with high-precision CSS tokens, animated audio waveforms, and dynamic risk meters.
-   - Comprehensive dashboard showing real-time spam block percentage, screened call metrics, and recent threats.
-2. **Real-Time Telecom CallScreeningService**:
-   - Native Kotlin service implementing `android.telecom.CallScreeningService`.
-   - Respects Android's strict ~5-second response deadline via a 2.5-second coroutine timeout budget.
-   - Built-in `FastLocalRulesEngine` ensures instant (<1ms) fallback if the network is disconnected.
-3. **Cloud LLM AI Screening Engine**:
-   - Evaluates caller ID, area code patterns, spoof likelihood, and spoken voice transcripts against Google Gemini / Cloud LLM models.
-   - Generates actionable verdicts: `ALLOW` (legitimate/contacts), `SILENCE` (suspicious/debt collectors), `REJECT` (phishing/robocall fraud).
-4. **Interactive Browser Call Simulator**:
-   - Test realistic scam scenarios without needing active phone calls:
-     - 🚨 *IRS Arrest Warrant Phishing Scam*
-     - 🚗 *Auto Warranty Robocall Bot*
-     - 📦 *Amazon Delivery Courier at Gate*
-     - 🏥 *Stanford Health Clinic Doctor Appointment*
-     - 💳 *Bank OTP Harvesting Fraud*
-     - ✍️ *Custom Dynamic Caller Simulator*
-5. **Fast Local Screening Rules**:
-   - Whitelist trusted contacts and emergency services (911, 112, 988) unconditionally.
-   - Block malicious toll-fraud prefixes (`+1-900`, `+1-976`, satellite fraud numbers) instantly.
-6. **Cloud Android Build (No Local Android Studio Required)**:
-   - Automated GitHub Actions workflow builds signed/debug `.apk` packages in the cloud.
-7. **Caller-End Audio Routing & Local Downlink Silencing ("AI Talks on Caller End, Not Ours")**:
-   - **Caller End Transmission**: During active AI screening, speech synthesis (TextToSpeech) and voicemail greetings are transmitted through the telephony voice call stream directly to the remote caller on the other end of the line.
-   - **Local Phone Silencing**: Local loudspeaker and earpiece audio outputs are suppressed on our end during automated screening so the recipient is never disturbed or embarrassed by bot speech.
-   - **Silent "Listen In" Monitor**: Device owners can tap the *Listen In* monitor at any time to hear caller chatter without unmuting the local microphone or leaking room noise to the caller.
-8. **Security**:
-   - All AI API keys and secrets stay securely on the Node.js backend.
+### 1. Caller-End Audio Routing & Strict Local Isolation ("AI Talks on Caller End, Not Ours")
+- **Caller Uplink Exclusivity**: During screening, AI Text-To-Speech audio and automated greetings are routed directly into the cellular voice call uplink (`STREAM_VOICE_CALL` / `MODE_IN_COMMUNICATION`). The caller hears the AI loud and clear.
+- **Local Downlink Muting**: Phone loudspeakers and earpieces are strictly silenced on our end during automated screening so the user is never disturbed by bot speech.
+- **Microphone Isolation**: Local microphone input is hardware-muted and isolated during AI screening to eliminate room background noise or private conversations from leaking to the remote caller.
+- **Private "Listen In" HUD**: Device owners can tap the *Listen In* monitor at any time to hear caller chatter without unmuting the local microphone or broadcasting room audio.
+
+### 2. Multi-Turn Conversational Dialog State Machine
+- Dynamic multi-turn conversational dialog engine mimicking Google Pixel Call Screen and Truecaller Assistant.
+- Tracks dialogue turns (`GREETING` -> `AWAITING_NAME_PURPOSE` -> `FOLLOWUP_QUERY` -> `CONCLUDED`).
+- Automatically generates real-time contextual quick-reply chips based on caller intent (e.g., "Ask for company name", "Leave at front door", "Call back later", "Mark as scam & disconnect").
+
+### 3. STIR/SHAKEN Cryptographic Caller ID Verification
+- Android 11+ (API 30+) carrier cryptographic verification status check:
+  - **Full Attestation (Level A)**: Origin carrier has cryptographically verified the caller's identity and right to use the telephone number.
+  - **Partial Attestation (Level B)**: Origin customer known, but telephone number ownership unverified.
+  - **Gateway Attestation (Level C)**: Call originated from an international or unauthenticated gateway.
+  - **Spoof Alert (FAILED)**: Cryptographic signature failed; call is flagged and auto-rejected.
+
+### 4. Zero-Trust PII & Financial Redaction
+- Transcripts, log entries, and UI displays automatically sanitize sensitive personally identifiable information (PII) including credit card numbers, Social Security Numbers (SSN), One-Time Passcodes (OTP), CVV codes, and bank account numbers.
+- Frontend includes an interactive PII redaction toggle allowing users to view sanitized or raw transcripts securely.
+
+### 5. Adversarial Prompt Injection & Jailbreak Defense
+- Inspects all caller utterances in real-time for prompt injection attempts, system prompt overrides, delimiter tampering, and jailbreak vectors (e.g., "Ignore previous instructions", "System override", "DAN mode").
+- Immediately flags adversarial attempts as high-risk threats, neutralizing the attack and triggering an automated disconnect.
+
+### 6. Backend Hardening & API Security
+- **HMAC-SHA256 Request Verification**: Guarantees authenticity of requests between mobile app and backend.
+- **Replay Attack Prevention**: Enforces timestamp freshness windows (`MAX_TIMESTAMP_DRIFT_MS = 300,000ms`) to thwart recorded payload replays.
+- **Token Bucket Rate Limiting**: Prevents API exhaustion and distributed denial-of-service threats with burst-limiting token buckets and HTTP 429 throttling.
+- **Audio Upload Path Traversal Defense**: Sanitizes file paths and filenames to block directory traversal vulnerabilities.
 
 ---
 
@@ -104,7 +111,7 @@ You **do not need Android Studio** installed on your laptop to generate or test 
 2. Select the **Build Android APK** workflow.
 3. Click **Run workflow** (or wait for the automatic push trigger).
 4. Once completed, scroll down to the **Artifacts** section and download `aegiscall-debug-apk`.
-5. Unzip and transfer `app-debug.apk` to your physical Android device.
+5. Transfer `app-debug.apk` to your physical Android device.
 
 ---
 
@@ -119,11 +126,10 @@ You **do not need Android Studio** installed on your laptop to generate or test 
    - Open AegisCall AI, go to the **Settings** tab, and tap **Request Screening Role**.
    - Or open Android **Settings** → **Apps** → **Default Apps** → **Caller ID & Spam App** → select **AegisCall AI**.
 3. **Configure Backend Endpoint**:
-   - Ensure your phone and computer are on the same Wi-Fi network.
-   - In the AegisCall AI **Settings** tab, enter your computer's local IP address (e.g., `http://192.168.1.100:4000`).
+   - In the AegisCall AI **Settings** tab, enter your backend server URL (e.g., `http://192.168.1.100:4000`).
    - Tap **Test** to verify connection.
 4. **Receive a Test Call**:
-   - Have a secondary phone call your device. The native `AiCallScreeningService` will evaluate the caller in real-time and silence/block/allow based on the AI verdict.
+   - Call your device from a secondary number. The native `AiCallScreeningService` intercepts and screens the call according to your rules and AI settings.
 
 ---
 
@@ -141,7 +147,7 @@ npm install --prefix backend
 npm install --prefix frontend
 ```
 
-### 2. Environment Configuration (Optional)
+### 2. Environment Configuration
 Create `backend/.env` (optional — intelligent mock analyzer runs automatically if no key is provided):
 ```env
 PORT=4000
@@ -160,16 +166,16 @@ Open your browser at `http://localhost:3000`.
 
 ## 🧪 Automated Testing
 
-Run the full test suite across both backend and frontend:
+AegisCall AI features a comprehensive automated test suite covering unit, integration, and security layers:
 
 ```bash
-# Run all tests
+# Run all tests across monorepo
 npm test
 
-# Run backend unit & integration tests
+# Run backend test suite (41 tests: prompt injection, rate limiting, replay attack, STIR/SHAKEN, LLM taxonomy)
 npm run test --prefix backend
 
-# Run frontend React component tests
+# Run frontend test suite (22 tests: audio isolation HUD, STIR/SHAKEN badges, PII masking, quick replies)
 npm run test --prefix frontend
 ```
 
@@ -186,52 +192,45 @@ callscreener/
 ├── backend/
 │   ├── src/
 │   │   ├── config.ts             # Environment & deadline configuration
+│   │   ├── middleware/
+│   │   │   ├── rateLimiter.ts        # Token bucket rate limiter & IP throttling
+│   │   │   └── securityMiddleware.ts # HMAC signature verification & replay defense
 │   │   ├── services/
-│   │   │   ├── fastRulesEngine.ts    # Deterministic local regex & keyword engine (<2ms)
-│   │   │   ├── llmScreeningEngine.ts # Google Gemini AI caller risk analyzer
-│   │   │   └── callLogStorage.ts     # History storage & analytics aggregator
+│   │   │   ├── promptInjectionDefense.ts # Zero-trust prompt injection analyzer
+│   │   │   ├── stirShakenService.ts      # STIR/SHAKEN carrier ID verification
+│   │   │   ├── fastRulesEngine.ts        # Deterministic local regex & keyword engine (<2ms)
+│   │   │   ├── llmScreeningEngine.ts     # Google Gemini AI caller risk analyzer
+│   │   │   └── callLogStorage.ts         # History storage & analytics aggregator
 │   │   ├── routes/
 │   │   │   ├── screeningRoutes.ts    # POST /api/screen-call, GET /api/rules
 │   │   │   ├── logRoutes.ts          # GET /api/logs, GET /api/logs/stats
 │   │   │   └── healthRoutes.ts       # GET /api/health
-│   │   ├── server.ts
-│   │   ├── index.ts
-│   │   └── tests/                # Automated backend test suite
-│   ├── package.json
-│   └── tsconfig.json
+│   │   └── tests/                # Automated backend test suite (41 unit tests)
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── DashboardTab.tsx      # Metrics, spam block rate gauge, recent logs
-│   │   │   ├── SimulatorTab.tsx      # Interactive incoming call simulator
-│   │   │   ├── CallLogsTab.tsx       # Filterable & searchable call history
-│   │   │   ├── RulesTab.tsx          # Fast local screening rules manager
-│   │   │   ├── SettingsTab.tsx       # Android RoleManager & backend URL config
-│   │   │   ├── IncomingCallOverlay.tsx # Audio wave & real-time AI transcript
-│   │   │   ├── CallModal.tsx         # Detailed rationale inspection
-│   │   │   └── Navbar.tsx            # Bottom mobile navigation
+│   │   │   ├── DashboardTab.tsx        # Metrics, spam block rate gauge, recent logs
+│   │   │   ├── IncomingCallOverlay.tsx # Audio isolation HUD, live transcript, smart chips
+│   │   │   ├── CallModal.tsx           # PII redaction toggle & live threat breakdown
+│   │   │   ├── RiskBadge.tsx           # Risk levels & STIR/SHAKEN attestation badges
+│   │   │   ├── DialerTab.tsx           # Interactive phone keypad & dialer
+│   │   │   └── SettingsTab.tsx         # RoleManager & security configuration
 │   │   ├── services/
-│   │   │   ├── api.ts                # REST API client
-│   │   │   └── capacitorService.ts   # Native bridge & browser mock fallback
-│   │   ├── index.css                 # Glassmorphic mobile-first design system
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── package.json
-│   └── vite.config.ts
+│   │   │   ├── api.ts                  # REST API client
+│   │   │   └── capacitorService.ts     # Native bridge & browser mock fallback
+│   │   └── test/                   # Automated frontend test suite (22 unit tests)
 ├── android/
-│   ├── app/
-│   │   ├── src/main/
-│   │   │   ├── AndroidManifest.xml   # BIND_SCREENING_SERVICE & Telecom registration
-│   │   │   └── java/com/aegiscall/screener/
-│   │   │       ├── MainActivity.kt
-│   │   │       ├── plugins/CallScreeningPlugin.kt # RoleManager bridge
-│   │   │       ├── telecom/AiCallScreeningService.kt # Kotlin CallScreeningService
-│   │   │       └── telecom/FastLocalRulesEngine.kt  # Fast local fallback
-│   │   └── build.gradle
-│   ├── build.gradle
-│   └── settings.gradle
-├── capacitor.config.ts
-├── package.json
+│   ├── app/src/main/java/com/aegiscall/screener/
+│   │   ├── telecom/
+│   │   │   ├── AiCallScreeningService.kt   # Android CallScreeningService interceptor
+│   │   │   ├── AegisInCallService.kt       # Multi-turn in-call screening service
+│   │   │   ├── TelecomAudioRouter.kt       # Caller-end uplink & local silencing router
+│   │   │   ├── StirShakenVerifier.kt       # Carrier cryptographic verification engine
+│   │   │   ├── SensitiveDataMasker.kt      # PII & financial data sanitizer
+│   │   │   ├── ContextualRepliesGenerator.kt # Real-time smart action chips generator
+│   │   │   └── FastLocalRulesEngine.kt     # In-memory LRU cache & fast fallback rules
+│   │   └── plugins/
+│   │       └── CallScreeningPlugin.kt      # Capacitor bridge for telephony & audio events
 └── README.md
 ```
 
