@@ -51,6 +51,25 @@ class AiCallScreeningService : CallScreeningService() {
 
         Log.i(TAG, "Incoming Telecom Call received on physical phone: $phoneNumber ($callerName) [Presentation: $presentation]")
 
+        // 0. Stage 0: STIR/SHAKEN Carrier Cryptographic Verification & Spoof Defense
+        val stirShaken = StirShakenVerifier.verifyCaller(callDetails)
+        if (stirShaken.isConfirmedSpoof) {
+            Log.w(TAG, "Carrier cryptographic verification failed! Number spoofed: $phoneNumber")
+            val spoofResult = FastLocalRulesEngine.generateFallback(phoneNumber, "Carrier STIR/SHAKEN verification FAILED: Number is forged/spoofed").copy(
+                verdict = "REJECT",
+                riskScore = 99,
+                riskLevel = "CRITICAL_SPAM",
+                category = "CARRIER_SPOOFED"
+            )
+            val callResponse = FastLocalRulesEngine.buildAndroidCallResponse(spoofResult)
+            if (callResponse != null) {
+                respondToCallSafely(callDetails, callResponse)
+            }
+            CallHistoryStorage.saveCall(applicationContext, spoofResult)
+            CallScreeningPlugin.broadcastScreenedCall(spoofResult)
+            return
+        }
+
         // 1. Stage 1: Ultra-fast local deterministic check (<1ms)
         val fastRuleResult = FastLocalRulesEngine.evaluate(applicationContext, phoneNumber)
         if (fastRuleResult != null) {
