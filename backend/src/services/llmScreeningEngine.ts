@@ -1,14 +1,76 @@
 import { config } from '../config.js';
 import { IncomingCallPayload, ScreeningResult, RiskLevel, CallerCategory, ScreeningVerdict } from '../types/index.js';
 import { FastRulesEngine } from './fastRulesEngine.js';
+import { inspectCallerUtterance } from './promptInjectionDefense.js';
+import { evaluateStirShaken } from './stirShakenService.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class LLMScreeningEngine {
   /**
-   * Main screening entry point: Fast Rules First -> LLM with Strict Timeout -> Safe Fallback
+   * Main screening entry point: Security Checks -> Fast Rules First -> LLM -> Fallback
    */
   public static async screenCall(payload: IncomingCallPayload): Promise<ScreeningResult> {
     const startTime = Date.now();
+
+    // 0. Stage 0: Security & Carrier Cryptographic Verification
+    const rawTranscript = payload.simulatedAudioTranscript || payload.callerIntent || '';
+    const injectionCheck = inspectCallerUtterance(rawTranscript);
+    if (injectionCheck.isInjectionAttempt) {
+      return {
+        id: `scr-${uuidv4().slice(0, 8)}`,
+        phoneNumber: payload.phoneNumber,
+        callerName: payload.callerName || 'Adversarial Prompt Injection',
+        verdict: 'REJECT',
+        riskScore: 99,
+        riskLevel: 'CRITICAL_SPAM',
+        category: 'PHISHING_SCAM',
+        confidence: 0.99,
+        rationale: injectionCheck.rationale || 'Adversarial prompt injection attempt detected in caller audio.',
+        engine: 'PROMPT_INJECTION_DEFENSE',
+        latencyMs: Math.max(1, Date.now() - startTime),
+        timestamp: new Date().toISOString(),
+        suggestedActions: {
+          disallowCall: true,
+          silenceCall: false,
+          rejectCall: true,
+          skipCallLog: false,
+          skipNotification: true,
+        },
+        metadata: {
+          spoofProbability: 0.95,
+          detectedKeywords: ['prompt_injection_blocked'],
+        },
+      };
+    }
+
+    const stirShaken = evaluateStirShaken(payload.phoneNumber, payload.callPresentationMode, payload.carrier);
+    if (stirShaken.isConfirmedSpoof) {
+      return {
+        id: `scr-${uuidv4().slice(0, 8)}`,
+        phoneNumber: payload.phoneNumber,
+        callerName: payload.callerName || 'Spoofed Caller ID',
+        verdict: 'REJECT',
+        riskScore: 99,
+        riskLevel: 'CRITICAL_SPAM',
+        category: 'CARRIER_SPOOFED',
+        confidence: 0.99,
+        rationale: stirShaken.description,
+        engine: 'STIR_SHAKEN_VERIFIER',
+        latencyMs: Math.max(1, Date.now() - startTime),
+        timestamp: new Date().toISOString(),
+        suggestedActions: {
+          disallowCall: true,
+          silenceCall: false,
+          rejectCall: true,
+          skipCallLog: false,
+          skipNotification: true,
+        },
+        metadata: {
+          spoofProbability: 0.99,
+          detectedKeywords: ['carrier_spoof_failed'],
+        },
+      };
+    }
 
     // 1. Stage 1: Ultra-fast deterministic rule check (<2ms)
     const fastRuleMatch = FastRulesEngine.evaluate(payload, startTime);

@@ -5,6 +5,7 @@ export type RiskLevel = 'SAFE' | 'LOW' | 'SUSPICIOUS' | 'CRITICAL_SPAM';
 export type CallerCategory =
   | 'ROBOCALL'
   | 'PHISHING_SCAM'
+  | 'CARRIER_SPOOFED'
   | 'TELEMARKETING'
   | 'DEBT_COLLECTOR'
   | 'DELIVERY_SERVICE'
@@ -17,6 +18,8 @@ export type ScreeningEngine =
   | 'FAST_LOCAL_FALLBACK'
   | 'WHITELIST_RULE'
   | 'BLACKLIST_RULE'
+  | 'PROMPT_INJECTION_DEFENSE'
+  | 'STIR_SHAKEN_VERIFIER'
   | 'SIMULATION';
 
 export interface CallResponseActions {
