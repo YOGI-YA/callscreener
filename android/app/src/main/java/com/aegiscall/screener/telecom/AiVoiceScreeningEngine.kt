@@ -37,6 +37,7 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
     private var currentLanguage = "en-US"
     private var voicePersona = "female" // "female", "male", "natural"
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val dialogStateMachine = DialogStateMachine()
 
     var isBotVoiceEnabled: Boolean = true
 
@@ -168,6 +169,7 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
 
     fun startScreeningConversation(context: Context, language: String = "auto", enableBotVoice: Boolean = true) {
         isBotVoiceEnabled = enableBotVoice
+        dialogStateMachine.reset()
         currentLanguage = when (language.lowercase()) {
             "hi" -> "hi-IN"
             "hinglish" -> "hi-IN"
@@ -281,6 +283,19 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                                 val defense = PromptInjectionDefense.inspectCallerUtterance(text)
                                 Log.i(TAG, "Caller said: ${defense.sanitizedText} (Injection detected: ${defense.isInjectionAttempt})")
                                 CallScreeningPlugin.broadcastCallerTranscript(defense.sanitizedText, isFinal = true)
+
+                                // Check Dialog State Machine for conversational follow-up
+                                if (isBotVoiceEnabled && !defense.isInjectionAttempt) {
+                                    val followUp = dialogStateMachine.processCallerTurn(defense.sanitizedText, currentLanguage)
+                                    if (followUp != null) {
+                                        mainHandler.postDelayed({
+                                            if (AegisInCallService.isScreeningActive) {
+                                                speakAiResponse(AegisInCallService.appContext, followUp)
+                                            }
+                                        }, 700)
+                                        return
+                                    }
+                                }
                             }
                             // Keep listening continuously during active screening
                             if (AegisInCallService.isScreeningActive) {
@@ -323,6 +338,7 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
             speechRecognizer?.destroy()
             speechRecognizer = null
             isListening = false
+            dialogStateMachine.reset()
             // Restore audio mode
             mainHandler.post {
                 try {
