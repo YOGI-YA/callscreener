@@ -233,14 +233,16 @@ object TelecomAudioRouter {
                     )
                 } catch (ignored: Exception) {}
             }
-            if (previousVolume >= 0) {
-                audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, previousVolume, 0)
-                previousVolume = -1
-            }
+            val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL)
+            val restoreVol = if (previousVolume > 0) previousVolume else (maxVol * 0.7).toInt()
+            audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, restoreVol, 0)
+            previousVolume = -1
+
             if (previousMusicVolume >= 0) {
                 audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, previousMusicVolume, 0)
                 previousMusicVolume = -1
             }
+            audioManager.isMicrophoneMute = false
             isDownlinkSuppressed = false
             isListenInActive = false
         } catch (e: Exception) {

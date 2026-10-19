@@ -243,6 +243,7 @@ class AegisInCallService : InCallService() {
                     }
                     Call.STATE_DISCONNECTED -> {
                         isScreeningActive = false
+                        CustomGreetingManager.stopPlayback()
                         AiVoiceScreeningEngine.stop()
                         try {
                             TelecomAudioRouter.resetAudio(this@AegisInCallService)
@@ -266,6 +267,7 @@ class AegisInCallService : InCallService() {
         super.onCallRemoved(call)
         Log.i(TAG, "Call Removed")
         isScreeningActive = false
+        CustomGreetingManager.stopPlayback()
         AiVoiceScreeningEngine.stop()
         try {
             TelecomAudioRouter.resetAudio(this)
