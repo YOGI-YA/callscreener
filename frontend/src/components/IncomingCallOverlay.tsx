@@ -129,11 +129,17 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       if (res?.mode) setScreeningMode(res.mode);
     });
 
+    let transcriptRafId: number | null = null;
+    let pendingTranscriptText = '';
+
     const unlistenTranscript = CapacitorService.addLiveTranscriptListener((data) => {
-      setIsCallerSpeaking(true);
-      setCallerStreamText(data.text);
       if (data.isFinal) {
+        if (transcriptRafId !== null) {
+          cancelAnimationFrame(transcriptRafId);
+          transcriptRafId = null;
+        }
         setIsCallerSpeaking(false);
+        setCallerStreamText('');
         setDialogue((prev) => [
           ...prev,
           {
@@ -142,8 +148,16 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }
         ]);
-        setCallerStreamText('');
         handleProcessCallerUtterance(data.text);
+      } else {
+        pendingTranscriptText = data.text;
+        if (transcriptRafId === null) {
+          transcriptRafId = requestAnimationFrame(() => {
+            setCallerStreamText(pendingTranscriptText);
+            setIsCallerSpeaking(true);
+            transcriptRafId = null;
+          });
+        }
       }
     });
 
@@ -173,8 +187,17 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       }
     });
 
+    let audioRafId: number | null = null;
+    let pendingRms = 0;
+
     const unlistenAudioLevel = CapacitorService.addAudioLevelListener((data) => {
-      setRmsLevel(data.rmsDb);
+      pendingRms = data.rmsDb;
+      if (audioRafId === null) {
+        audioRafId = requestAnimationFrame(() => {
+          setRmsLevel(pendingRms);
+          audioRafId = null;
+        });
+      }
     });
 
     const unlistenRecordingSaved = CapacitorService.addRecordingSavedListener((data) => {
@@ -209,6 +232,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     });
 
     return () => {
+      if (transcriptRafId !== null) cancelAnimationFrame(transcriptRafId);
+      if (audioRafId !== null) cancelAnimationFrame(audioRafId);
       if (unlistenTranscript) unlistenTranscript();
       if (unlistenAiSpeech) unlistenAiSpeech();
       if (unlistenVoicemail) unlistenVoicemail();
