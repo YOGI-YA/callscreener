@@ -202,6 +202,12 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       setListenIn(data.isListenIn);
     });
 
+    const unlistenQuickReplies = CapacitorService.addQuickRepliesListener((data) => {
+      if (data?.replies && Array.isArray(data.replies)) {
+        setDynamicChips(data.replies.map((r) => r.speechText || r.label));
+      }
+    });
+
     return () => {
       if (unlistenTranscript) unlistenTranscript();
       if (unlistenAiSpeech) unlistenAiSpeech();
@@ -212,6 +218,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       if (unlistenPickedUp) unlistenPickedUp();
       if (unlistenAudio) unlistenAudio();
       if (unlistenAudioRoute) unlistenAudioRoute();
+      if (unlistenQuickReplies) unlistenQuickReplies();
     };
   }, [onDismiss]);
 

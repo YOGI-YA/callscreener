@@ -23,12 +23,19 @@ describe('Caller End Audio Isolation & Local Downlink Silencing', () => {
     verdict: 'ALLOW',
     riskScore: 20,
     riskLevel: 'LOW',
-    category: 'BANKING',
+    category: 'VERIFIED_CONTACT',
     confidence: 0.95,
     rationale: 'Verified banking institution caller.',
-    engine: 'ON_DEVICE_AI',
+    engine: 'LLM_AI',
     latencyMs: 120,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    suggestedActions: {
+      disallowCall: false,
+      silenceCall: false,
+      rejectCall: false,
+      skipCallLog: false,
+      skipNotification: false
+    }
   };
 
   beforeEach(() => {

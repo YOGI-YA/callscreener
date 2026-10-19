@@ -727,6 +727,20 @@ export class CapacitorService {
     return null;
   }
 
+  public static addQuickRepliesListener(callback: (data: { replies: Array<{ id: string; label: string; speechText: string; actionType: string }> }) => void): (() => void) | null {
+    if (!this.isNative()) return null;
+    try {
+      const bridge = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (bridge?.addListener) {
+        const handle = bridge.addListener('quickRepliesAvailable', (data: any) => callback(data));
+        return () => { if (handle?.remove) handle.remove(); };
+      }
+    } catch (e) {
+      console.warn('Error attaching quickRepliesAvailable listener:', e);
+    }
+    return null;
+  }
+
   public static async getCurrentCall(): Promise<{
     hasActiveCall: boolean;
     phoneNumber?: string;
