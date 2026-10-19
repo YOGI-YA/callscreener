@@ -1150,56 +1150,84 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
             </div>
           </div>
 
-          {/* Audio Route Indicator: AI talking on Caller End, Our End Silenced */}
+          {/* Audio Route & Security Isolation HUD: AI on caller line uplink, local end isolated */}
           <div
             style={{
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '6px 12px',
+              flexDirection: 'column',
+              gap: 6,
+              padding: '8px 12px',
               borderRadius: 'var(--radius-md)',
-              background: 'rgba(15, 23, 42, 0.9)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              background: 'rgba(15, 23, 42, 0.92)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
               fontSize: '0.73rem',
               flexShrink: 0
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  color: isAiSpeaking ? '#34d399' : '#38bdf8',
-                  fontWeight: 700
-                }}
-              >
-                <PhoneCall size={13} />
-                <span>Caller End: {isAiSpeaking ? 'AI Speaking Live' : 'Listening for Caller'}</span>
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    color: isAiSpeaking ? '#34d399' : '#38bdf8',
+                    fontWeight: 700
+                  }}
+                >
+                  <PhoneCall size={13} />
+                  <span>Uplink (Caller Line): {isAiSpeaking ? 'AI Speaking Live' : 'Listening for Caller'}</span>
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    color: '#34d399',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    padding: '2px 6px',
+                    borderRadius: 'var(--radius-full)',
+                    fontSize: '0.66rem',
+                    fontWeight: 600
+                  }}
+                  title="Local microphone is strictly muted/isolated during AI screening to eliminate eavesdropping"
+                >
+                  <MicOff size={10} />
+                  <span>Mic Isolated</span>
+                </span>
+
+                <button
+                  onClick={handleToggleListenIn}
+                  style={{
+                    background: listenIn ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+                    border: listenIn ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                    color: listenIn ? '#38bdf8' : 'var(--text-muted)',
+                    borderRadius: 'var(--radius-full)',
+                    padding: '3px 10px',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    transition: 'all 0.2s'
+                  }}
+                  title={listenIn ? 'Click to silence device speaker' : 'Click for private listen-in (caller cannot hear you)'}
+                >
+                  {listenIn ? <Headphones size={12} color="#38bdf8" /> : <VolumeX size={12} color="var(--text-muted)" />}
+                  <span>{listenIn ? 'Private Listen: ON' : 'Speaker: Silenced'}</span>
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={handleToggleListenIn}
-              style={{
-                background: listenIn ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.06)',
-                border: listenIn ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
-                color: listenIn ? '#38bdf8' : 'var(--text-muted)',
-                borderRadius: 'var(--radius-full)',
-                padding: '3px 10px',
-                fontSize: '0.7rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                transition: 'all 0.2s'
-              }}
-              title={listenIn ? 'Click to silence local audio' : 'Click to listen in silently on our end'}
-            >
-              {listenIn ? <Volume2 size={12} color="#38bdf8" /> : <VolumeX size={12} color="var(--text-muted)" />}
-              <span>{listenIn ? 'Listen In: Active' : 'Our End: Silenced'}</span>
-            </button>
+            <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <ShieldCheck size={11} color="#34d399" />
+              <span>Zero-Leakage Audio: AI communicates on caller uplink. Your room audio is not broadcast.</span>
+            </div>
           </div>
 
           {/* Live Conversation Transcript Feed */}
