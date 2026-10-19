@@ -4,6 +4,7 @@ import { maskSensitiveText } from './sensitiveDataMasker.js';
 
 export class CallLogStorage {
   private static logs: ScreeningResult[] = [];
+  private static logIndex = new Map<string, ScreeningResult>();
 
   public static initializeSeedData() {
     if (this.logs.length === 0) {
@@ -119,6 +120,9 @@ export class CallLogStorage {
           }
         }
       ];
+      for (const item of this.logs) {
+        this.logIndex.set(item.id, item);
+      }
     }
   }
 
@@ -131,9 +135,12 @@ export class CallLogStorage {
 
     // Insert at beginning
     this.logs.unshift(sanitizedResult);
+    this.logIndex.set(sanitizedResult.id, sanitizedResult);
+
     // Keep max 200 logs
     if (this.logs.length > 200) {
-      this.logs.pop();
+      const removed = this.logs.pop();
+      if (removed) this.logIndex.delete(removed.id);
     }
 
     // Automated recording / call email forwarding dispatch
@@ -189,10 +196,12 @@ export class CallLogStorage {
   }
 
   public static getLogById(id: string): ScreeningResult | undefined {
-    return this.logs.find((l) => l.id === id);
+    this.initializeSeedData();
+    return this.logIndex.get(id) || this.logs.find((l) => l.id === id);
   }
 
   public static deleteLog(id: string): boolean {
+    this.logIndex.delete(id);
     const initialLen = this.logs.length;
     this.logs = this.logs.filter((l) => l.id !== id);
     return this.logs.length !== initialLen;
@@ -200,6 +209,7 @@ export class CallLogStorage {
 
   public static clearAll(): void {
     this.logs = [];
+    this.logIndex.clear();
   }
 
   public static getStats(): CallScreeningStats {
