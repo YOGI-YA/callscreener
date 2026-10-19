@@ -62,8 +62,8 @@ describe('Caller End Audio Isolation & Local Downlink Silencing', () => {
     );
 
     // Audio status bar should verify caller end active and our end silenced
-    expect(screen.getByText(/Caller End:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Our End: Silenced/i)).toBeInTheDocument();
+    expect(screen.getByText(/Uplink \(Caller Line\):/i)).toBeInTheDocument();
+    expect(screen.getByText(/Speaker: Silenced/i)).toBeInTheDocument();
   });
 
   it('toggles listen-in monitoring cleanly without unmuting user microphone towards caller', async () => {
@@ -79,7 +79,7 @@ describe('Caller End Audio Isolation & Local Downlink Silencing', () => {
       />
     );
 
-    const toggleBtn = screen.getByTitle(/Click to listen in silently on our end/i);
+    const toggleBtn = screen.getByTitle(/Click for private listen-in/i);
     expect(toggleBtn).toBeInTheDocument();
 
     // Tap to listen in
@@ -87,7 +87,7 @@ describe('Caller End Audio Isolation & Local Downlink Silencing', () => {
     expect(setListenInSpy).toHaveBeenCalledWith(true);
 
     await waitFor(() => {
-      expect(screen.getByText(/Listen In: Active/i)).toBeInTheDocument();
+      expect(screen.getByText(/Private Listen: ON/i)).toBeInTheDocument();
     });
 
     // Tap again to re-silence our end
@@ -95,7 +95,7 @@ describe('Caller End Audio Isolation & Local Downlink Silencing', () => {
     expect(setListenInSpy).toHaveBeenCalledWith(false);
 
     await waitFor(() => {
-      expect(screen.getByText(/Our End: Silenced/i)).toBeInTheDocument();
+      expect(screen.getByText(/Speaker: Silenced/i)).toBeInTheDocument();
     });
   });
 
