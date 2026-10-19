@@ -250,4 +250,20 @@ object TelecomAudioRouter {
 
     fun isListenIn(): Boolean = isListenInActive
     fun isSuppressed(): Boolean = isDownlinkSuppressed
+
+    data class AudioIsolationDiagnostics(
+        val isCallerUplinkActive: Boolean,
+        val isLocalDownlinkSuppressed: Boolean,
+        val isLocalMicIsolated: Boolean,
+        val isListenInActive: Boolean
+    )
+
+    fun getAudioIsolationDiagnostics(): AudioIsolationDiagnostics {
+        return AudioIsolationDiagnostics(
+            isCallerUplinkActive = isDownlinkSuppressed,
+            isLocalDownlinkSuppressed = isDownlinkSuppressed,
+            isLocalMicIsolated = !isListenInActive,
+            isListenInActive = isListenInActive
+        )
+    }
 }
