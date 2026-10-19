@@ -12,6 +12,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.MediaType.Companion.toMediaType
@@ -154,5 +155,10 @@ class AiCallScreeningService : CallScreeningService() {
         val screeningResponse = gson.fromJson(responseString, ScreeningResponse::class.java)
 
         return screeningResponse.data ?: throw IllegalStateException("No screening data returned")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
     }
 }
