@@ -64,3 +64,105 @@ export const RiskBadge: React.FC<RiskBadgeProps> = ({ level, verdict, score, sho
     </span>
   );
 };
+
+export interface StirShakenBadgeProps {
+  status?: 'VERIFIED_A' | 'PARTIAL_B' | 'GATEWAY_C' | 'FAILED_SPOOF' | 'NOT_VERIFIED';
+  compact?: boolean;
+}
+
+export const StirShakenBadge: React.FC<StirShakenBadgeProps> = ({ status = 'NOT_VERIFIED', compact = false }) => {
+  if (status === 'VERIFIED_A') {
+    return (
+      <span
+        className="stir-shaken-badge verified-a"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '2px 8px',
+          borderRadius: '999px',
+          background: 'rgba(16, 185, 129, 0.15)',
+          border: '1px solid rgba(16, 185, 129, 0.4)',
+          color: '#10b981',
+          fontSize: '0.72rem',
+          fontWeight: 600,
+          letterSpacing: '0.02em'
+        }}
+        title="STIR/SHAKEN Level A Full Attestation: Caller identity cryptographically verified by carrier"
+      >
+        <ShieldCheck size={12} />
+        <span>{compact ? 'Verified A' : 'STIR/SHAKEN Verified (A)'}</span>
+      </span>
+    );
+  }
+
+  if (status === 'PARTIAL_B') {
+    return (
+      <span
+        className="stir-shaken-badge partial-b"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '2px 8px',
+          borderRadius: '999px',
+          background: 'rgba(245, 158, 11, 0.15)',
+          border: '1px solid rgba(245, 158, 11, 0.4)',
+          color: '#f59e0b',
+          fontSize: '0.72rem',
+          fontWeight: 600
+        }}
+        title="STIR/SHAKEN Level B Partial Attestation: Origin customer known, but telephone number not verified"
+      >
+        <ShieldAlert size={12} />
+        <span>{compact ? 'Partial B' : 'STIR/SHAKEN Partial (B)'}</span>
+      </span>
+    );
+  }
+
+  if (status === 'FAILED_SPOOF') {
+    return (
+      <span
+        className="stir-shaken-badge failed-spoof"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '2px 8px',
+          borderRadius: '999px',
+          background: 'rgba(239, 68, 68, 0.18)',
+          border: '1px solid rgba(239, 68, 68, 0.5)',
+          color: '#ef4444',
+          fontSize: '0.72rem',
+          fontWeight: 700
+        }}
+        title="Carrier Spoof Alert: Cryptographic verification failed! Caller ID was forged."
+      >
+        <ShieldX size={12} />
+        <span>{compact ? 'Spoof Alert' : 'Carrier Spoofed (FAILED)'}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="stir-shaken-badge not-verified"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '2px 8px',
+        borderRadius: '999px',
+        background: 'rgba(255, 255, 255, 0.06)',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
+        color: '#94a3b8',
+        fontSize: '0.72rem',
+        fontWeight: 500
+      }}
+      title="STIR/SHAKEN verification not supported or unverified by origin carrier"
+    >
+      <PhoneCall size={12} />
+      <span>{compact ? 'Unverified' : 'Carrier Unverified'}</span>
+    </span>
+  );
+};

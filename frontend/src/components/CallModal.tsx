@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, ShieldCheck, ShieldAlert, ShieldX, Clock, Cpu, FileText, CheckCircle2, ShieldBan, ShieldPlus } from 'lucide-react';
 import { ScreeningResult, ScreeningVerdict } from '../types';
-import { RiskBadge } from './RiskBadge';
+import { RiskBadge, StirShakenBadge } from './RiskBadge';
 
 interface CallModalProps {
   log: ScreeningResult | null;
@@ -56,8 +56,17 @@ export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule })
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <RiskBadge level={log.riskLevel} verdict={log.verdict} score={log.riskScore} />
+          <StirShakenBadge
+            status={
+              log.stirShakenStatus ||
+              (log.metadata?.stirShakenAttestation === 'A' ? 'VERIFIED_A' :
+               log.metadata?.stirShakenAttestation === 'B' ? 'PARTIAL_B' :
+               log.category === 'CARRIER_SPOOFED' || (log.metadata?.spoofProbability && log.metadata.spoofProbability > 0.8) ? 'FAILED_SPOOF' :
+               log.isCarrierVerified ? 'VERIFIED_A' : 'NOT_VERIFIED')
+            }
+          />
           <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
             Category: <strong>{log.category.replace('_', ' ')}</strong>
           </span>

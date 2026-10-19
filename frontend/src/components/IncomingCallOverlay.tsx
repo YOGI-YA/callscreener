@@ -6,7 +6,7 @@ import {
   AlertCircle, Headphones, Activity, ShieldCheck, ShieldAlert
 } from 'lucide-react';
 import { IncomingCallPayload, ScreeningResult, DialogueTurn, ScreeningVerdict } from '../types';
-import { RiskBadge } from './RiskBadge';
+import { RiskBadge, StirShakenBadge } from './RiskBadge';
 import { CapacitorService } from '../services/capacitorService';
 import { ApiService } from '../services/api';
 
@@ -827,6 +827,19 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
               <span>✓ Verified Caller • Trust Score 94%</span>
             </div>
           )}
+        </div>
+
+        {/* STIR/SHAKEN Carrier Cryptographic Attestation */}
+        <div style={{ marginTop: 6, display: 'flex', justifyContent: 'center' }}>
+          <StirShakenBadge
+            status={
+              incomingCall.stirShakenStatus ||
+              (screeningResult?.metadata?.stirShakenAttestation === 'A' ? 'VERIFIED_A' :
+               screeningResult?.metadata?.stirShakenAttestation === 'B' ? 'PARTIAL_B' :
+               screeningResult?.category === 'CARRIER_SPOOFED' || (screeningResult?.metadata?.spoofProbability && screeningResult.metadata.spoofProbability > 0.8) ? 'FAILED_SPOOF' :
+               incomingCall.isCarrierVerified ? 'VERIFIED_A' : 'NOT_VERIFIED')
+            }
+          />
         </div>
       </div>
 

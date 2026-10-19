@@ -10,6 +10,7 @@ export type CallerCategory =
   | 'DELIVERY_SERVICE'
   | 'MEDICAL_APPOINTMENT'
   | 'VERIFIED_CONTACT'
+  | 'CARRIER_SPOOFED'
   | 'UNKNOWN';
 
 export type ScreeningEngine =
@@ -46,6 +47,8 @@ export interface IncomingCallPayload {
   dialogueHistory?: DialogueTurn[];
   isOutgoing?: boolean;
   initialPhase?: 'RINGING' | 'SCREENING' | 'CONNECTED';
+  stirShakenStatus?: 'VERIFIED_A' | 'PARTIAL_B' | 'GATEWAY_C' | 'FAILED_SPOOF' | 'NOT_VERIFIED';
+  isCarrierVerified?: boolean;
 }
 
 export interface ScreeningResult {
@@ -61,6 +64,8 @@ export interface ScreeningResult {
   engine: ScreeningEngine;
   latencyMs: number;
   timestamp: string;
+  stirShakenStatus?: 'VERIFIED_A' | 'PARTIAL_B' | 'GATEWAY_C' | 'FAILED_SPOOF' | 'NOT_VERIFIED';
+  isCarrierVerified?: boolean;
   callerIntentSummary?: string;
   dialogueTurns?: DialogueTurn[];
   suggestedSmartReplies?: string[];
@@ -70,6 +75,7 @@ export interface ScreeningResult {
     ruleMatched?: string;
     detectedKeywords?: string[];
     llmModelUsed?: string;
+    stirShakenAttestation?: string;
   };
 }
 
