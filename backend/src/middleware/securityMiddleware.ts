@@ -70,7 +70,10 @@ export function verifyHmacSignature(secretKey?: string) {
     const payload = JSON.stringify(req.body || {});
     const expected = crypto.createHmac('sha256', key).update(payload).digest('hex');
 
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expected);
+
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
       res.status(401).json({
         success: false,
         error: 'SIGNATURE_INVALID',

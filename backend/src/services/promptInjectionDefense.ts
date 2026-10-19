@@ -6,16 +6,19 @@
  */
 
 const INJECTION_PATTERNS = [
-  /\bignore\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts|rules)\b/i,
-  /\bdisregard\s+(all\s+)?(previous|prior)\s+instructions\b/i,
+  /\bignore\s+(all\s+)?(previous\s+|prior\s+|above\s+)?(instructions|prompts|rules|guidelines|system\s+rules)\b/i,
+  /\bdisregard\s+(all\s+)?(previous\s+|prior\s+|above\s+)?(instructions|prompts|rules|guidelines|system\s+rules)\b/i,
   /\byou\s+are\s+now\s+in\s+(developer|dan|unrestricted|god)\s+mode\b/i,
-  /\bsystem\s+prompt\s*(override|bypass|leak|reveal)\b/i,
+  /\b(dan\s+mode|developer\s+mode|unrestricted\s+mode)\b/i,
+  /\bsystem\s+(prompt\s*)?(override|bypass|leak|reveal|directive)\b/i,
   /\bemergency\s+override\s+code\b/i,
   /\btell\s+the\s+(recipient|user|owner)\s+(that\s+)?(you\s+verified|i\s+am\s+verified|i\s+am\s+their\s+bank)\b/i,
   /\btell\s+(the\s+)?(user|recipient)\s+to\s+(transfer|wire|send\s+money|read\s+(the\s+)?otp|read\s+(the\s+)?code)\b/i,
-  /\bbypass\s+(the\s+)?(security\s+check|screening|verification)\b/i,
+  /\bbypass\s+(the\s+)?(security\s+check|screening|verification|filters)\b/i,
   /\bpretend\s+to\s+be\s+an\s+ai\s+without\s+restrictions\b/i,
   /\bsay\s+yes\s+to\s+everything\b/i,
+  /\boutput\s+verdict\s+allow\b/i,
+  /```[\s\S]*?```/,
   /\bjailbreak\b/i,
 ];
 
@@ -23,6 +26,7 @@ export interface DefenseInspectionResult {
   isInjectionAttempt: boolean;
   sanitizedText: string;
   threatScoreBoost: number;
+  threatLevel: 'HIGH' | 'MEDIUM' | 'SAFE';
   rationale?: string;
 }
 
@@ -32,6 +36,7 @@ export function inspectCallerUtterance(rawText: string): DefenseInspectionResult
       isInjectionAttempt: false,
       sanitizedText: rawText || '',
       threatScoreBoost: 0,
+      threatLevel: 'SAFE',
     };
   }
 
@@ -52,6 +57,7 @@ export function inspectCallerUtterance(rawText: string): DefenseInspectionResult
     isInjectionAttempt: detected,
     sanitizedText: sanitized,
     threatScoreBoost: detected ? 45 : 0,
+    threatLevel: detected ? 'HIGH' : 'SAFE',
     rationale: reason,
   };
 }
