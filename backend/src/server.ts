@@ -4,15 +4,20 @@ import { screeningRouter } from './routes/screeningRoutes.js';
 import { logRouter } from './routes/logRoutes.js';
 import { healthRouter } from './routes/healthRoutes.js';
 import { recordingRouter } from './routes/recordingRoutes.js';
+import { applySecurityHeaders, preventReplayAttacks } from './middleware/securityMiddleware.js';
 
 export function createServer(): Express {
   const app = express();
 
-  // Middleware
+  // Security Middleware
+  app.use(applySecurityHeaders);
+  app.use(preventReplayAttacks);
+
+  // Core Middleware
   app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-token']
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-token', 'x-aegis-signature', 'x-aegis-timestamp']
   }));
   app.use(express.json({ limit: '25mb' }));
 
