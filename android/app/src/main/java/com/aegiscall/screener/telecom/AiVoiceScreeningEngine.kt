@@ -278,8 +278,9 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                             val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                             val text = matches?.firstOrNull() ?: ""
                             if (text.isNotBlank()) {
-                                Log.i(TAG, "Caller said: $text")
-                                CallScreeningPlugin.broadcastCallerTranscript(text, isFinal = true)
+                                val defense = PromptInjectionDefense.inspectCallerUtterance(text)
+                                Log.i(TAG, "Caller said: ${defense.sanitizedText} (Injection detected: ${defense.isInjectionAttempt})")
+                                CallScreeningPlugin.broadcastCallerTranscript(defense.sanitizedText, isFinal = true)
                             }
                             // Keep listening continuously during active screening
                             if (AegisInCallService.isScreeningActive) {
@@ -290,7 +291,8 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                             val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                             val text = matches?.firstOrNull() ?: ""
                             if (text.isNotBlank()) {
-                                CallScreeningPlugin.broadcastCallerTranscript(text, isFinal = false)
+                                val defense = PromptInjectionDefense.inspectCallerUtterance(text)
+                                CallScreeningPlugin.broadcastCallerTranscript(defense.sanitizedText, isFinal = false)
                             }
                         }
                         override fun onEvent(eventType: Int, params: Bundle?) {}
