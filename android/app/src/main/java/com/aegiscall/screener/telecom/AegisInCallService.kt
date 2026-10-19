@@ -52,6 +52,16 @@ class AegisInCallService : InCallService() {
             CallScreeningPlugin.broadcastCallEnded()
         }
 
+        fun autoDisconnectScamCall(reason: String) {
+            if (!isScreeningActive) return
+            Log.w(TAG, "Auto-disconnecting scam call: $reason")
+            val terminationMsg = "This call has been identified as unauthorized or fraudulent and is being disconnected. Goodbye."
+            AiVoiceScreeningEngine.speakAiResponse(appContext, terminationMsg)
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                rejectCall()
+            }, 2600)
+        }
+
         fun startAiScreening(language: String = "auto", enableBotVoice: Boolean = true) {
             isScreeningActive = true
             // Answer the call programmatically to screen it

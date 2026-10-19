@@ -288,8 +288,13 @@ object AiVoiceScreeningEngine : TextToSpeech.OnInitListener {
                                 val replies = ContextualRepliesGenerator.generateReplies(defense.sanitizedText, currentLanguage)
                                 CallScreeningPlugin.broadcastQuickReplies(replies)
 
+                                if (defense.isInjectionAttempt) {
+                                    AegisInCallService.autoDisconnectScamCall("Adversarial prompt injection attempt detected")
+                                    return
+                                }
+
                                 // Check Dialog State Machine for conversational follow-up
-                                if (isBotVoiceEnabled && !defense.isInjectionAttempt) {
+                                if (isBotVoiceEnabled) {
                                     val followUp = dialogStateMachine.processCallerTurn(defense.sanitizedText, currentLanguage)
                                     if (followUp != null) {
                                         mainHandler.postDelayed({
