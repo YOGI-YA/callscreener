@@ -15,6 +15,9 @@ object FastLocalRulesEngine {
     private const val RULES_PREFS = "aegis_screener_rules_prefs"
     private const val RULES_KEY = "custom_rules_json"
 
+    // High-performance in-memory LRU cache for 0ms sub-millisecond lookups
+    private val memoryCache = android.util.LruCache<String, ScreeningData>(128)
+
     /**
      * Executes instant local regex & heuristic evaluation (<2ms)
      */
@@ -24,6 +27,16 @@ object FastLocalRulesEngine {
         }
 
         val clean = rawPhoneNumber.replace(Regex("[\\s\\-\\(\\)\\.]"), "")
+
+        // Check memory cache first
+        val cached = memoryCache.get(clean)
+        if (cached != null) {
+            return cached.copy(
+                id = "cache-${UUID.randomUUID()}",
+                timestamp = System.currentTimeMillis().toString(),
+                latencyMs = 0L
+            )
+        }
 
         // 1. Emergency Numbers - Must ALWAYS allow
         if (emergencyRegex.matches(clean) || emergencyRegex.matches(rawPhoneNumber)) {
@@ -46,7 +59,7 @@ object FastLocalRulesEngine {
 
         // 2. High-Risk Toll / Satellite / Malformed Blocks
         if (tollFraudRegex.containsMatchIn(clean) || satelliteFraudRegex.containsMatchIn(clean) || spoofedZerosRegex.matches(clean)) {
-            return ScreeningData(
+            val res = ScreeningData(
                 id = "local-${UUID.randomUUID()}",
                 phoneNumber = rawPhoneNumber,
                 callerName = "High Risk Fraud Prefix",
@@ -61,11 +74,14 @@ object FastLocalRulesEngine {
                 timestamp = System.currentTimeMillis().toString(),
                 suggestedActions = CallResponseActions(disallowCall = true, silenceCall = false, rejectCall = true, skipNotification = true)
             )
+            memoryCache.put(clean, res)
+            return res
         }
 
         // 3. User Custom Rules (Blacklist / Whitelist saved in app)
         val customRuleMatch = evaluateCustomRules(context, rawPhoneNumber, clean)
         if (customRuleMatch != null) {
+            memoryCache.put(clean, customRuleMatch)
             return customRuleMatch
         }
 
@@ -129,9 +145,14 @@ object FastLocalRulesEngine {
         try {
             val prefs = context.getSharedPreferences(RULES_PREFS, Context.MODE_PRIVATE)
             prefs.edit().putString(RULES_KEY, rulesJson).apply()
+            memoryCache.evictAll()
         } catch (e: Exception) {
             // ignore
         }
+    }
+
+    fun clearCache() {
+        memoryCache.evictAll()
     }
 
     /**
