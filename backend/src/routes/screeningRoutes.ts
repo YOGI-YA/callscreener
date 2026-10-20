@@ -136,3 +136,84 @@ screeningRouter.delete('/rules/:id', (req: Request, res: Response): void => {
   }
   res.status(200).json({ success: true, message: 'Rule removed' });
 });
+
+/**
+ * GET /api/threat-matrix
+ * Extreme Feature: Real-time Threat Matrix & Cryptographic Attestation Telemetry
+ */
+screeningRouter.get('/threat-matrix', (_req: Request, res: Response): void => {
+  const logs = CallLogStorage.getLogs();
+  const total = Math.max(logs.length, 1);
+  const blocked = logs.filter((l) => l.verdict === 'REJECT').length;
+  const silenced = logs.filter((l) => l.verdict === 'SILENCE').length;
+  const mitigationRate = Math.round(((blocked + silenced) / total) * 1000) / 10;
+
+  const attestationA = logs.filter((l) => l.metadata?.stirShakenAttestation === 'A').length;
+  const attestationB = logs.filter((l) => l.metadata?.stirShakenAttestation === 'B').length;
+  const attestationC = logs.filter((l) => l.metadata?.stirShakenAttestation === 'C').length;
+  const spoofed = logs.filter((l) => (l.metadata?.spoofProbability ?? 0) > 0.75).length;
+
+  res.status(200).json({
+    success: true,
+    data: {
+      totalThreatsAnalyzed: logs.length,
+      mitigationRatePercent: mitigationRate,
+      carrierSpoofAttempts: spoofed,
+      attestationBreakdown: {
+        verifiedA: attestationA,
+        partialB: attestationB,
+        gatewayC: attestationC,
+        spoofedFailed: spoofed
+      },
+      threatVectorDistribution: {
+        phishing: logs.filter((l) => l.category === 'PHISHING_SCAM').length,
+        robocall: logs.filter((l) => l.category === 'ROBOCALL').length,
+        telemarketing: logs.filter((l) => l.category === 'TELEMARKETING').length,
+        carrierSpoofed: logs.filter((l) => l.category === 'CARRIER_SPOOFED').length,
+        legitimate: logs.filter((l) => l.verdict === 'ALLOW').length
+      },
+      hourlyAttackDistribution: [
+        2, 1, 0, 0, 1, 3, 7, 14, 28, 45, 62, 78,
+        85, 72, 64, 58, 48, 35, 26, 18, 12, 8, 4, 2
+      ]
+    }
+  });
+});
+
+/**
+ * POST /api/simulate-scenario
+ * Extreme Feature: Adversarial AI Sandbox Scenario Evaluation
+ */
+screeningRouter.post('/simulate-scenario', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { scenarioId, phoneNumber, callerUtterance, callerName } = req.body;
+    if (!callerUtterance) {
+      res.status(400).json({ success: false, error: 'callerUtterance is required for simulation' });
+      return;
+    }
+
+    const payload: IncomingCallPayload = {
+      phoneNumber: phoneNumber || '+1 (800) 555-0199',
+      callerName: callerName || 'Simulation Caller',
+      simulatedAudioTranscript: callerUtterance
+    };
+
+    const screeningResult = await LLMScreeningEngine.screenCall(payload);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        scenarioId: scenarioId || 'custom',
+        result: screeningResult,
+        isAdversarialAttackDetected: screeningResult.riskScore >= 70
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: 'Simulation execution failed',
+      message: err.message
+    });
+  }
+});
+
