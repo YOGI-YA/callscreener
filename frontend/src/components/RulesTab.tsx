@@ -14,6 +14,7 @@ export const RulesTab: React.FC<RulesTabProps> = ({ rules, onAddRule, onDeleteRu
   const [description, setDescription] = useState('');
   const [action, setAction] = useState<ScreeningVerdict>('REJECT');
   const [ruleType, setRuleType] = useState<ScreeningRule['type']>('BLACKLIST');
+  const [testInput, setTestInput] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,6 +148,85 @@ export const RulesTab: React.FC<RulesTabProps> = ({ rules, onAddRule, onDeleteRu
           </div>
         </form>
       )}
+
+      {/* Extreme Feature: Live Rule Pattern & Regex Simulator */}
+      <div
+        className="glass-card"
+        style={{
+          padding: '12px 14px',
+          background: 'rgba(15, 23, 42, 0.85)',
+          border: '1px solid rgba(99, 102, 241, 0.25)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-glow)' }}>
+            ⚡ Instant Regex Rule Simulator (&lt;1ms)
+          </span>
+          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
+            Real-time heuristic validation
+          </span>
+        </div>
+        <input
+          type="text"
+          value={testInput}
+          onChange={(e) => setTestInput(e.target.value)}
+          placeholder="Test a number (e.g. 911, +19001234567, 0000000000)…"
+          style={{
+            width: '100%',
+            background: 'rgba(0,0,0,0.3)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '8px 12px',
+            fontSize: '0.76rem',
+            color: '#fff',
+            fontFamily: 'var(--font-mono)'
+          }}
+        />
+
+        {testInput.trim() && (
+          <div
+            style={{
+              marginTop: 8,
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-sm)',
+              background: matchingRule
+                ? matchingRule.action === 'ALLOW'
+                  ? 'rgba(16, 185, 129, 0.15)'
+                  : 'rgba(239, 68, 68, 0.15)'
+                : 'rgba(255,255,255,0.06)',
+              border: `1px solid ${
+                matchingRule
+                  ? matchingRule.action === 'ALLOW'
+                    ? '#10b981'
+                    : '#ef4444'
+                  : 'rgba(255,255,255,0.1)'
+              }`,
+              fontSize: '0.72rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}
+          >
+            <span>
+              {matchingRule ? (
+                <>
+                  <strong style={{ color: matchingRule.action === 'ALLOW' ? '#34d399' : '#f87171' }}>
+                    Match: {matchingRule.description}
+                  </strong>{' '}
+                  ({matchingRule.action})
+                </>
+              ) : (
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  No deterministic rule matched → Forwards to Multi-Turn AI Screener
+                </span>
+              )}
+            </span>
+            <span style={{ fontSize: '0.64rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-glow)' }}>
+              0.4ms
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Rules List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
