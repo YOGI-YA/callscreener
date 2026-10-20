@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { CallScreeningStats, ScreeningResult } from '../types';
 import { RiskBadge } from './RiskBadge';
+import { ThreatMatrixAnalytics } from './ThreatMatrixAnalytics';
 import { CapacitorService } from '../services/capacitorService';
 
 interface DashboardTabProps {
@@ -276,6 +277,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Extreme Feature: Threat Matrix Intelligence Radar & Heatmap */}
+      <ThreatMatrixAnalytics logs={recentLogs} />
 
       {/* Quick Status Grid: Role & Engine */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
