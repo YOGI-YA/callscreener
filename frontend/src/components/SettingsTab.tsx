@@ -47,6 +47,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
   const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const [emailNotice, setEmailNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Extreme Feature: Screening Persona & Voice Tone
+  const [aiPersona, setAiPersona] = useState<'GUARDIAN' | 'POLITE' | 'PIXEL'>(() => {
+    return (localStorage.getItem('aegis_screener_persona') as any) || 'GUARDIAN';
+  });
+  const [voiceTone, setVoiceTone] = useState<'NEURAL_NATURAL' | 'AUTHORITATIVE' | 'CONCISE'>(() => {
+    return (localStorage.getItem('aegis_screener_voice_tone') as any) || 'NEURAL_NATURAL';
+  });
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<any>(null);
@@ -616,6 +624,91 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
               {greetingNotice}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Extreme Feature: AI Screening Persona & Tone Customization */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>
+              AI Screening Persona & Voice Tone
+            </div>
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+              Choose how Aegis AI interacts with callers before ringing your phone
+            </div>
+          </div>
+        </div>
+
+        {/* Persona Options */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {[
+            { id: 'GUARDIAN' as const, name: 'Strict Guardian', badge: 'Aggressive Defense', desc: 'Auto-blocks unsolicited calls immediately' },
+            { id: 'POLITE' as const, name: 'Polite Assistant', badge: 'Courteous', desc: 'Natural multi-turn friendly conversation' },
+            { id: 'PIXEL' as const, name: 'Pixel Concise', badge: 'Ultra Fast', desc: 'Direct, minimal words, immediate intent' }
+          ].map((item) => (
+            <div
+              key={item.id}
+              onClick={() => {
+                setAiPersona(item.id);
+                localStorage.setItem('aegis_screener_persona', item.id);
+              }}
+              style={{
+                padding: '10px 8px',
+                borderRadius: 'var(--radius-md)',
+                background: aiPersona === item.id ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                border: `1px solid ${aiPersona === item.id ? 'var(--accent-glow)' : 'var(--border-subtle)'}`,
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4
+              }}
+            >
+              <div style={{ fontSize: '0.76rem', fontWeight: 800, color: aiPersona === item.id ? '#fff' : 'var(--text-secondary)' }}>
+                {item.name}
+              </div>
+              <div style={{ fontSize: '0.64rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                {item.badge}
+              </div>
+              <div style={{ fontSize: '0.64rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+                {item.desc}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Voice Tone Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <span style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+            Synthesizer Tone:
+          </span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[
+              { id: 'NEURAL_NATURAL' as const, label: 'Natural' },
+              { id: 'AUTHORITATIVE' as const, label: 'Authoritative' },
+              { id: 'CONCISE' as const, label: 'Fast Brief' }
+            ].map((tone) => (
+              <button
+                key={tone.id}
+                onClick={() => {
+                  setVoiceTone(tone.id);
+                  localStorage.setItem('aegis_screener_voice_tone', tone.id);
+                }}
+                style={{
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  background: voiceTone === tone.id ? 'var(--accent-glow)' : 'rgba(255,255,255,0.06)',
+                  color: voiceTone === tone.id ? '#0a0f1d' : 'var(--text-secondary)',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                {tone.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
