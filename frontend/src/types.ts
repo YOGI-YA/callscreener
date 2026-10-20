@@ -99,6 +99,58 @@ export interface CallScreeningStats {
   spamBlockRate: number;
 }
 
+export interface AudioWaveformState {
+  isListening: boolean;
+  decibels: number;
+  activeSpeaker: 'CALLER' | 'AI_ASSISTANT' | 'SILENT_MONITORING' | 'IDLE';
+  uplinkIsolationActive: boolean;
+  frequencyPeaks: number[];
+}
+
+export interface VoicemailAudioMetadata {
+  recordingId: string;
+  durationSeconds: number;
+  playbackSpeed: number;
+  isMuted: boolean;
+  audioUrl?: string;
+  waveformPeaks?: number[];
+}
+
+export interface ThreatMatrixData {
+  totalThreatsAnalyzed: number;
+  mitigationRatePercent: number;
+  carrierSpoofAttempts: number;
+  attestationBreakdown: {
+    verifiedA: number;
+    partialB: number;
+    gatewayC: number;
+    spoofedFailed: number;
+  };
+  threatVectorDistribution: {
+    phishing: number;
+    robocall: number;
+    impersonation: number;
+    telemarketing: number;
+    promptInjection: number;
+    legitimate: number;
+  };
+  hourlyAttackDistribution: number[];
+}
+
+export interface SimulationScenario {
+  id: string;
+  title: string;
+  callerName: string;
+  phoneNumber: string;
+  category: CallerCategory;
+  expectedRiskScore: number;
+  stirShakenStatus: 'VERIFIED_A' | 'PARTIAL_B' | 'GATEWAY_C' | 'FAILED_SPOOF' | 'NOT_VERIFIED';
+  initialUtterance: string;
+  simulatedAudioTranscript: string;
+  description: string;
+  tags: string[];
+}
+
 export type LanguagePreference = 'AUTO' | 'EN' | 'HI' | 'HINGLISH';
 
 export interface AppSettings {
