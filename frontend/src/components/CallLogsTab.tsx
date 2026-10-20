@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { ScreeningResult, ScreeningVerdict, RecordedCallItem } from '../types';
 import { RiskBadge } from './RiskBadge';
+import { VoicemailAudioPlayer } from './VoicemailAudioPlayer';
 import { CapacitorService } from '../services/capacitorService';
 import { ApiService } from '../services/api';
 
@@ -544,31 +545,14 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
                       </div>
                     </div>
 
-                    {/* Audio Wave Bar Simulation while playing */}
+                    {/* Extreme Feature: In-line Voicemail & Recording Audio Player with Speed Controls */}
                     {isPlaying && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '6px 10px',
-                          borderRadius: 'var(--radius-sm)',
-                          background: 'rgba(0,0,0,0.3)'
-                        }}
-                      >
-                        <Volume2 size={14} color="var(--accent-glow)" />
-                        <div className="ai-voice-wave" style={{ flex: 1, height: 16 }}>
-                          <div className="ai-wave-bar" />
-                          <div className="ai-wave-bar" />
-                          <div className="ai-wave-bar" />
-                          <div className="ai-wave-bar" />
-                          <div className="ai-wave-bar" />
-                          <div className="ai-wave-bar" />
-                          <div className="ai-wave-bar" />
-                        </div>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--accent-glow)', fontWeight: 700 }}>
-                          Playing HD Audio
-                        </span>
+                      <div style={{ marginTop: 8 }}>
+                        <VoicemailAudioPlayer
+                          durationSeconds={rec.durationSeconds || 24}
+                          callerName={rec.phoneNumber}
+                          transcription="AegisCall encrypted local call recording archive."
+                        />
                       </div>
                     )}
 
