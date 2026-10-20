@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { ScreeningResult, ScreeningVerdict } from '../types';
 import { RiskBadge, StirShakenBadge } from './RiskBadge';
+import { VoicemailAudioPlayer } from './VoicemailAudioPlayer';
 
 interface CallModalProps {
   log: ScreeningResult | null;
@@ -199,6 +200,15 @@ export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule })
             {displayRationale}
           </p>
         </div>
+
+        {/* Extreme Feature: Interactive Voicemail Audio Player & Scrubbing */}
+        <VoicemailAudioPlayer
+          durationSeconds={Math.max(16, (log.dialogueTurns?.length || 1) * 8)}
+          callerName={displayCallerName}
+          transcription={log.callerIntentSummary || displayRationale}
+          piiMasked={maskPii}
+          onTogglePiiMask={() => setMaskPii(!maskPii)}
+        />
 
         {/* Dialogue Turns History if present */}
         {log.dialogueTurns && log.dialogueTurns.length > 0 && (
