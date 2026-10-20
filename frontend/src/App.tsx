@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Radio, Activity, RefreshCw } from 'lucide-react';
+import { Shield, Radio, Activity, RefreshCw, Bot, Terminal } from 'lucide-react';
 import { TabId, Navbar } from './components/Navbar';
 import { DashboardTab } from './components/DashboardTab';
 import { DialerTab } from './components/DialerTab';
@@ -8,10 +8,11 @@ import { RulesTab } from './components/RulesTab';
 import { SettingsTab } from './components/SettingsTab';
 import { IncomingCallOverlay } from './components/IncomingCallOverlay';
 import { CallModal } from './components/CallModal';
+import { CallSimulatorSandbox } from './components/CallSimulatorSandbox';
 import { ApiService } from './services/api';
 import { CapacitorService } from './services/capacitorService';
 import { AutoSetupWizard } from './components/AutoSetupWizard';
-import { IncomingCallPayload, ScreeningResult, CallScreeningStats, ScreeningRule, ScreeningVerdict } from './types';
+import { IncomingCallPayload, ScreeningResult, CallScreeningStats, ScreeningRule, ScreeningVerdict, SimulationScenario } from './types';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
@@ -24,6 +25,7 @@ export const App: React.FC = () => {
   });
   const [roleGranted, setRoleGranted] = useState<boolean>(false);
   const [showAutoSetup, setShowAutoSetup] = useState<boolean>(false);
+  const [showSandbox, setShowSandbox] = useState<boolean>(false);
 
   // Live incoming call simulation state
   const [incomingCall, setIncomingCall] = useState<IncomingCallPayload | null>(null);
@@ -248,6 +250,25 @@ export const App: React.FC = () => {
     }, 800);
   };
 
+  const handleLaunchSandboxScenario = (scenario: SimulationScenario) => {
+    const payload: IncomingCallPayload = {
+      phoneNumber: scenario.phoneNumber,
+      callerName: scenario.callerName,
+      callPresentationMode: 'ALLOWED',
+      simulatedAudioTranscript: scenario.simulatedAudioTranscript,
+      stirShakenStatus: scenario.stirShakenStatus,
+      initialPhase: 'SCREENING'
+    };
+    setIncomingCall(payload);
+    setShowSandbox(false);
+    setIsScreening(true);
+    ApiService.screenCall(payload).then((res) => {
+      setActiveResult(res);
+      setLogs((prev) => [res, ...prev]);
+      ApiService.getStats().then(setStats).catch(() => {});
+    }).catch(console.error);
+  };
+
   const handleDeleteLog = async (id: string) => {
     try {
       await ApiService.deleteLog(id);
@@ -316,17 +337,43 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={refreshAllData}
-            title="Refresh Status"
-            style={{ color: 'var(--text-secondary)', padding: 6 }}
-          >
-            <RefreshCw size={16} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => setShowSandbox(!showSandbox)}
+              title="Adversarial AI Call Sandbox"
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                padding: '4px 9px',
+                borderRadius: 'var(--radius-full)',
+                background: showSandbox ? 'var(--accent-glow)' : 'rgba(255,255,255,0.06)',
+                color: showSandbox ? '#0a0f1d' : 'var(--accent-glow)',
+                border: '1px solid ' + (showSandbox ? 'var(--accent-glow)' : 'rgba(99,102,241,0.3)'),
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              <Terminal size={12} />
+              <span>Sandbox</span>
+            </button>
+
+            <button
+              onClick={refreshAllData}
+              title="Refresh Status"
+              style={{ color: 'var(--text-secondary)', padding: 6 }}
+            >
+              <RefreshCw size={16} />
+            </button>
+          </div>
         </header>
 
         {/* Scrollable Main Views */}
         <main className="app-content">
+          {showSandbox && (
+            <CallSimulatorSandbox onLaunchLiveCall={handleLaunchSandboxScenario} />
+          )}
+
           {activeTab === 'dashboard' && (
             <DashboardTab
               stats={stats}
