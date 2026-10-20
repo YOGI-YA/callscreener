@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { IncomingCallPayload, ScreeningResult, DialogueTurn, ScreeningVerdict } from '../types';
 import { RiskBadge, StirShakenBadge } from './RiskBadge';
+import { AudioWaveformHUD } from './AudioWaveformHUD';
 import { CapacitorService } from '../services/capacitorService';
 import { ApiService } from '../services/api';
 
@@ -1149,6 +1150,30 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
               )}
             </div>
           </div>
+
+          {/* Extreme Feature: Live Acoustic Waveform Visualizer & Decibel Telemetry */}
+          <AudioWaveformHUD
+            activeSpeaker={
+              isAiSpeaking
+                ? 'AI_ASSISTANT'
+                : isCallerSpeaking || Boolean(callerStreamText)
+                ? 'CALLER'
+                : listenIn
+                ? 'SILENT_MONITORING'
+                : 'IDLE'
+            }
+            isListening={true}
+            uplinkSilenced={!isTransmittingToCaller}
+            customLabel={
+              screeningMode === 'PERSONAL_VOICEMAIL'
+                ? 'Voicemail Direct Inbound'
+                : isAiSpeaking
+                ? 'Aegis Neural Voice (To Caller)'
+                : isCallerSpeaking
+                ? 'Caller Audio Stream'
+                : 'Acoustic Monitoring'
+            }
+          />
 
           {/* Audio Route & Security Isolation HUD: AI on caller line uplink, local end isolated */}
           <div
