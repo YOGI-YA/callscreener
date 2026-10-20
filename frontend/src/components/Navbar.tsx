@@ -33,23 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, unreadCo
             <div className="nav-icon-wrap" style={{ position: 'relative' }}>
               <Icon size={20} />
               {tab.badge && tab.badge > 0 ? (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: -4,
-                    right: -6,
-                    backgroundColor: 'var(--accent-glow)',
-                    color: '#fff',
-                    fontSize: '0.6rem',
-                    fontWeight: 700,
-                    width: 14,
-                    height: 14,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
+                <span className="nav-badge">
                   {tab.badge}
                 </span>
               ) : null}

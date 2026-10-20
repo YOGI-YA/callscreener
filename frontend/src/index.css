@@ -2,16 +2,18 @@
   --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Color Palette */
-  --bg-primary: #080c14;
-  --bg-surface: #0f1626;
-  --bg-card: rgba(21, 30, 49, 0.7);
-  --bg-card-hover: rgba(30, 42, 68, 0.85);
-  --bg-glass: rgba(15, 23, 42, 0.75);
+  /* Premium Obsidian & Cyber-Indigo Palette */
+  --bg-primary: #050811;
+  --bg-surface: #0a0f1d;
+  --bg-card: rgba(15, 23, 42, 0.72);
+  --bg-card-hover: rgba(24, 34, 60, 0.88);
+  --bg-glass: rgba(10, 15, 29, 0.82);
+  --bg-dock: rgba(13, 20, 38, 0.92);
 
-  --border-subtle: rgba(255, 255, 255, 0.07);
-  --border-medium: rgba(255, 255, 255, 0.14);
-  --border-glow: rgba(99, 102, 241, 0.35);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.16);
+  --border-glow: rgba(99, 102, 241, 0.42);
+  --border-accent: rgba(129, 140, 248, 0.5);
 
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
@@ -19,29 +21,31 @@
 
   --accent-primary: #6366f1;
   --accent-glow: #818cf8;
-  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-  --accent-gradient-radial: radial-gradient(circle at top, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+  --accent-cyan: #38bdf8;
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  --accent-gradient-radial: radial-gradient(circle at top, rgba(99, 102, 241, 0.22) 0%, transparent 70%);
 
   --color-safe: #10b981;
-  --color-safe-bg: rgba(16, 185, 129, 0.12);
-  --color-safe-border: rgba(16, 185, 129, 0.3);
+  --color-safe-bg: rgba(16, 185, 129, 0.14);
+  --color-safe-border: rgba(16, 185, 129, 0.35);
 
   --color-warning: #f59e0b;
-  --color-warning-bg: rgba(245, 158, 11, 0.12);
-  --color-warning-border: rgba(245, 158, 11, 0.3);
+  --color-warning-bg: rgba(245, 158, 11, 0.14);
+  --color-warning-border: rgba(245, 158, 11, 0.35);
 
   --color-danger: #ef4444;
-  --color-danger-bg: rgba(239, 68, 68, 0.12);
-  --color-danger-border: rgba(239, 68, 68, 0.3);
+  --color-danger-bg: rgba(239, 68, 68, 0.14);
+  --color-danger-border: rgba(239, 68, 68, 0.35);
 
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.25);
-  --shadow-danger-glow: 0 0 25px rgba(239, 68, 68, 0.3);
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 0 28px rgba(99, 102, 241, 0.3);
+  --shadow-cyan-glow: 0 0 24px rgba(56, 189, 248, 0.28);
+  --shadow-danger-glow: 0 0 28px rgba(239, 68, 68, 0.35);
 
   --radius-sm: 8px;
   --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-lg: 22px;
   --radius-full: 9999px;
 }
 
@@ -687,5 +691,362 @@ input, select, textarea {
 @keyframes ringExpand {
   0% { transform: scale(0.9); opacity: 0.9; }
   100% { transform: scale(1.35); opacity: 0; }
+}
+
+/* ==========================================================================
+   FLOATING BOTTOM NAVIGATION DOCK
+   ========================================================================== */
+.bottom-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 10px 14px;
+  background: var(--bg-dock);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-medium);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+}
+
+.nav-tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.nav-tab-btn:hover {
+  color: var(--text-primary);
+  transform: translateY(-2px);
+}
+
+.nav-tab-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.28) 0%, rgba(139, 92, 246, 0.18) 100%);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.3);
+}
+
+.nav-tab-btn.active .nav-icon-wrap {
+  color: var(--accent-glow);
+  transform: scale(1.1);
+  transition: transform 0.25s ease;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.5);
+  border: 1.5px solid var(--bg-surface);
+}
+
+/* ==========================================================================
+   LIVE AUDIO WAVEFORM HUD
+   ========================================================================== */
+.audio-waveform-hud {
+  background: rgba(9, 14, 28, 0.9);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.audio-waveform-hud::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-glow), #38bdf8, transparent);
+}
+
+.waveform-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.waveform-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.waveform-bars-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3.5px;
+  height: 48px;
+  padding: 4px 0;
+}
+
+.waveform-bar-col {
+  width: 4px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, var(--accent-cyan) 0%, var(--accent-primary) 100%);
+  transition: height 0.08s ease, opacity 0.08s ease, background 0.2s ease;
+  min-height: 4px;
+}
+
+.waveform-bar-col.ai {
+  background: linear-gradient(180deg, #ec4899 0%, #8b5cf6 100%);
+}
+
+.waveform-bar-col.silent {
+  background: rgba(148, 163, 184, 0.25);
+  height: 4px !important;
+}
+
+.waveform-metrics-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.waveform-metric-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   VOICEMAIL AUDIO PLAYER
+   ========================================================================== */
+.voicemail-player-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(20, 30, 56, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.voicemail-scrubber-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.1);
+  position: relative;
+  cursor: pointer;
+  margin: 12px 0 8px;
+}
+
+.voicemail-scrubber-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent-gradient);
+  position: relative;
+  transition: width 0.1s linear;
+}
+
+.voicemail-scrubber-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+  position: absolute;
+  right: -7px;
+  top: -4px;
+}
+
+.voicemail-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.voicemail-play-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.voicemail-play-btn:hover {
+  transform: scale(1.08);
+}
+
+.voicemail-speed-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.voicemail-speed-btn.active {
+  background: rgba(99, 102, 241, 0.3);
+  color: #fff;
+  border-color: var(--accent-glow);
+}
+
+/* ==========================================================================
+   THREAT MATRIX ANALYTICS
+   ========================================================================== */
+.threat-matrix-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.threat-matrix-card {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.threat-matrix-card.full-width {
+  grid-column: span 2;
+}
+
+.threat-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.78rem;
+}
+
+.threat-bar-fill-bg {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.threat-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hourly heatmap 24-column bar chart */
+.hourly-heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 2.5px;
+  align-items: flex-end;
+  height: 56px;
+  padding-top: 8px;
+}
+
+.hourly-heatmap-bar {
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--accent-cyan) 0%, rgba(99, 102, 241, 0.4) 100%);
+  min-height: 4px;
+  transition: height 0.3s ease;
+  position: relative;
+}
+
+.hourly-heatmap-bar:hover {
+  background: #ec4899;
+}
+
+/* ==========================================================================
+   CALL SIMULATOR SANDBOX
+   ========================================================================== */
+.sandbox-drawer {
+  background: rgba(8, 12, 24, 0.96);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.75), var(--shadow-glow);
+  margin-bottom: 20px;
+}
+
+.sandbox-scenarios-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin: 12px 0;
+}
+
+.sandbox-scenario-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.sandbox-scenario-chip:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--accent-glow);
+}
+
+.sandbox-scenario-chip.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(168, 85, 247, 0.25) 100%);
+  border-color: var(--accent-glow);
+  box-shadow: 0 0 14px rgba(99, 102, 241, 0.3);
 }
 
