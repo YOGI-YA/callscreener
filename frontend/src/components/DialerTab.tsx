@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, PhoneOff,
-  Search, User, Clock, ChevronRight, Delete, Mic, Sparkles
+  Search, User, Clock, ChevronRight, Delete, Mic, Sparkles, Activity
 } from 'lucide-react';
+import { AudioWaveformHUD } from './AudioWaveformHUD';
 import { CapacitorService } from '../services/capacitorService';
 
 interface Contact {
@@ -93,6 +94,7 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
   const [callLog, setCallLog] = useState<DeviceCall[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isMicAcousticCheck, setIsMicAcousticCheck] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -496,33 +498,65 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
               >
                 {dialNumber || 'Enter number…'}
               </span>
-              {dialNumber ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <button
-                  onMouseDown={handleBackspace}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}
-                  title="Backspace"
-                >
-                  <Delete size={20} />
-                </button>
-              ) : (
-                <button
-                  onClick={handlePaste}
+                  onClick={() => setIsMicAcousticCheck(!isMicAcousticCheck)}
                   style={{
-                    background: 'rgba(255,255,255,0.08)',
-                    border: '1px solid var(--border-subtle)',
+                    background: isMicAcousticCheck ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255,255,255,0.06)',
+                    border: '1px solid ' + (isMicAcousticCheck ? 'var(--accent-glow)' : 'var(--border-subtle)'),
                     borderRadius: 'var(--radius-sm)',
-                    color: 'var(--accent-glow)',
+                    color: isMicAcousticCheck ? '#fff' : 'var(--text-secondary)',
                     cursor: 'pointer',
                     padding: '4px 8px',
                     fontSize: '0.72rem',
                     fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
                   }}
-                  title="Paste number"
+                  title="Toggle Live Acoustic DSP Telemetry"
                 >
-                  Paste
+                  <Activity size={13} color={isMicAcousticCheck ? 'var(--accent-cyan)' : 'var(--text-muted)'} />
+                  <span>DSP Wave</span>
                 </button>
-              )}
+                {dialNumber ? (
+                  <button
+                    onMouseDown={handleBackspace}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}
+                    title="Backspace"
+                  >
+                    <Delete size={20} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handlePaste}
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-sm)',
+                      color: 'var(--accent-glow)',
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                    }}
+                    title="Paste number"
+                  >
+                    Paste
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Extreme Feature: Live Acoustic DSP Waveform HUD in Dialer */}
+            {isMicAcousticCheck && (
+              <AudioWaveformHUD
+                activeSpeaker="CALLER"
+                isListening={true}
+                uplinkSilenced={false}
+                customLabel="Dialer Mic Acoustic DSP"
+              />
+            )}
 
             {/* T9 Smart Predictive Suggestions */}
             {t9Suggestions.length > 0 && (
