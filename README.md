@@ -101,6 +101,31 @@ AegisCall AI is an enterprise, industry-grade Android call-screening and robocal
 - **Token Bucket Rate Limiting**: Prevents API exhaustion and distributed denial-of-service threats with burst-limiting token buckets and HTTP 429 throttling.
 - **Audio Upload Path Traversal Defense**: Sanitizes file paths and filenames to block directory traversal vulnerabilities.
 
+### 7. Live Acoustic Waveform Visualizer & Echo Guard
+- Real-time animated audio wave harmonic frequencies with dynamic speaker classification (`CALLER`, `AI_ASSISTANT`, `SILENT_MONITORING`).
+- Integrated decibel sound level meter (`dBFS`) and acoustic echo isolation guard status.
+- Hardware mic silence guarantee preventing room audio transmission during automated screening.
+
+### 8. Interactive AI Adversarial Call Sandbox
+- Live in-app sandbox for security engineers and users to test adversarial robocalls, tax scams, and prompt injection attacks.
+- Preloaded scenarios:
+  - 🚨 **IRS Lawsuit / Tax Fraud Threat**
+  - 💳 **Bank Fraud & OTP Extraction Attack**
+  - 🤖 **Adversarial Prompt Injection & Jailbreak Probe**
+  - 📦 **Amazon Logistics Delivery (Legitimate)**
+  - 🏥 **Medical Clinic Appointment (Legitimate)**
+- One-tap launch directly into full-screen phone screening interface.
+
+### 9. Threat Matrix Intelligence Radar & 24-Hour Attack Heatmap
+- Visualizes STIR/SHAKEN cryptographic trust distribution across Full (A), Partial (B), Gateway (C), and Spoofed (Failed) attestations.
+- 24-hour attack density wave chart displaying peak telemarketing and robocall attack windows (11:00 AM - 2:00 PM).
+- Real-time mitigation percentage tracking automated blocks without ringer disturbance.
+
+### 10. Voicemail & Call Audio Player with Variable Speed & Scrubbing
+- Integrated waveform scrubber with duration and current playback timestamp.
+- Variable speed controls (`1x`, `1.25x`, `1.5x`, `2x`) with 5-second quick jumps.
+- Instant PII unmask/re-mask toggle directly on audio playback cards.
+
 ---
 
 ## 📱 Cloud APK Build & Download Instructions
