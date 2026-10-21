@@ -24,22 +24,28 @@ export class CapacitorService {
     return (window as any).Capacitor?.Plugins?.CallScreeningBridge || null;
   }
 
+  private static async safeCallPlugin<T>(fn: (plugin: NativeScreenerPlugin) => Promise<T>, fallback: T): Promise<T> {
+    try {
+      const plugin = this.getPlugin();
+      if (plugin) {
+        return await fn(plugin);
+      }
+    } catch (e) {
+      console.warn('CallScreeningBridge native error:', e);
+    }
+    return fallback;
+  }
+
   public static async checkRoleStatus(): Promise<{ isDefaultScreener: boolean; roleGranted: boolean }> {
     if (!this.isNative()) {
       const mockGranted = localStorage.getItem('mock_role_granted') === 'true';
       return { isDefaultScreener: mockGranted, roleGranted: mockGranted };
     }
 
-    try {
-      const plugin = this.getPlugin();
-      if (plugin && typeof plugin.checkScreeningRole === 'function') {
-        return await plugin.checkScreeningRole();
-      }
-    } catch (e) {
-      console.warn('Native CallScreeningBridge plugin not found, falling back to false', e);
-    }
-
-    return { isDefaultScreener: false, roleGranted: false };
+    return this.safeCallPlugin(
+      (plugin) => plugin.checkScreeningRole(),
+      { isDefaultScreener: false, roleGranted: false }
+    );
   }
 
   public static async requestScreeningRole(): Promise<{ success: boolean; message: string }> {
