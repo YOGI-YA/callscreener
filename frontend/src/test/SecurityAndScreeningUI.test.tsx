@@ -81,7 +81,7 @@ describe('Security and Call Screening Frontend Component Tests', () => {
 
       // Verify PII is masked in caller name and rationale
       expect(screen.getAllByText(/4111 \*\*\*\* \*\*\*\* 4444/).length).toBeGreaterThan(0);
-      expect(screen.getByText(/\[REDACTED_OTP\]/)).toBeInTheDocument();
+      expect(screen.getAllByText(/\[REDACTED_OTP\]/).length).toBeGreaterThan(0);
 
       // Verify conversation dialogue turn has SSN redacted
       expect(screen.getByText(/\[REDACTED_SSN\]/)).toBeInTheDocument();
@@ -95,7 +95,7 @@ describe('Security and Call Screening Frontend Component Tests', () => {
       fireEvent.click(toggleBtn);
 
       // Raw unmasked text is now visible
-      expect(screen.getByText(/OTP is 492812/)).toBeInTheDocument();
+      expect(screen.getAllByText(/OTP is 492812/).length).toBeGreaterThan(0);
       expect(screen.getByText(/123-45-6789/)).toBeInTheDocument();
       expect(screen.getByText(/Raw Transcript View/i)).toBeInTheDocument();
 
@@ -103,7 +103,7 @@ describe('Security and Call Screening Frontend Component Tests', () => {
       const maskBtn = screen.getByRole('button', { name: /Mask PII/i });
       fireEvent.click(maskBtn);
 
-      expect(screen.getByText(/\[REDACTED_OTP\]/)).toBeInTheDocument();
+      expect(screen.getAllByText(/\[REDACTED_OTP\]/).length).toBeGreaterThan(0);
       expect(screen.getByText(/\[REDACTED_SSN\]/)).toBeInTheDocument();
     });
 
