@@ -72,4 +72,31 @@ describe('Backend REST API Routes', () => {
     expect(resStats.status).toBe(200);
     expect(resStats.body.data.totalCallsScreened).toBeGreaterThan(0);
   });
+
+  it('GET /api/threat-matrix returns telecom threat telemetry and attestation breakdown', async () => {
+    const res = await request(app).get('/api/threat-matrix');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.attestationBreakdown).toBeDefined();
+    expect(res.body.data.threatVectorDistribution).toBeDefined();
+    expect(Array.isArray(res.body.data.hourlyAttackDistribution)).toBe(true);
+    expect(res.body.data.hourlyAttackDistribution.length).toBe(24);
+  });
+
+  it('POST /api/simulate-scenario evaluates adversarial caller prompts with risk analysis', async () => {
+    const res = await request(app)
+      .post('/api/simulate-scenario')
+      .send({
+        scenarioId: 'test-scenario',
+        phoneNumber: '+1-800-829-1040',
+        callerName: 'IRS Officer',
+        callerUtterance: 'Urgent notice regarding your federal taxes. An arrest warrant has been filed.'
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.scenarioId).toBe('test-scenario');
+    expect(res.body.data.result.verdict).toBe('REJECT');
+    expect(res.body.data.isAdversarialAttackDetected).toBe(true);
+  });
 });
