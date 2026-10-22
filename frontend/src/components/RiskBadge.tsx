@@ -166,3 +166,87 @@ export const StirShakenBadge: React.FC<StirShakenBadgeProps> = ({ status = 'NOT_
     </span>
   );
 };
+
+export interface DeepfakeBiometricBadgeProps {
+  syntheticProbability?: number; // 0 to 100
+  compact?: boolean;
+}
+
+export const DeepfakeBiometricBadge: React.FC<DeepfakeBiometricBadgeProps> = ({
+  syntheticProbability = 4,
+  compact = false
+}) => {
+  const isSynthetic = syntheticProbability >= 65;
+  const isSuspicious = syntheticProbability >= 35 && syntheticProbability < 65;
+
+  if (isSynthetic) {
+    return (
+      <span
+        className="deepfake-badge synthetic-alert"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '2px 8px',
+          borderRadius: '999px',
+          background: 'rgba(236, 72, 153, 0.18)',
+          border: '1px solid rgba(236, 72, 153, 0.5)',
+          color: '#f472b6',
+          fontSize: '0.72rem',
+          fontWeight: 700
+        }}
+        title={`Neural Voice Clone Warning: ${syntheticProbability}% probability of AI generated/synthesized speech`}
+      >
+        <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#ec4899', animation: 'pulse 1.5s infinite' }} />
+        <span>{compact ? `AI Voice (${syntheticProbability}%)` : `Neural AI Clone Detected (${syntheticProbability}%)`}</span>
+      </span>
+    );
+  }
+
+  if (isSuspicious) {
+    return (
+      <span
+        className="deepfake-badge synthetic-caution"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '2px 8px',
+          borderRadius: '999px',
+          background: 'rgba(245, 158, 11, 0.15)',
+          border: '1px solid rgba(245, 158, 11, 0.4)',
+          color: '#fbbf24',
+          fontSize: '0.72rem',
+          fontWeight: 600
+        }}
+        title={`Biometric Anomaly: ${syntheticProbability}% synthetic artifact variance`}
+      >
+        <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#f59e0b' }} />
+        <span>{compact ? `Voice Anomaly` : `Biometric Anomaly (${syntheticProbability}%)`}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="deepfake-badge authentic-human"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '2px 8px',
+        borderRadius: '999px',
+        background: 'rgba(56, 189, 248, 0.12)',
+        border: '1px solid rgba(56, 189, 248, 0.35)',
+        color: '#38bdf8',
+        fontSize: '0.72rem',
+        fontWeight: 600
+      }}
+      title="Acoustic Biometrics: Organic vocal tract harmonics verified (Human caller)"
+    >
+      <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#38bdf8' }} />
+      <span>{compact ? 'Human Voice' : 'Acoustic Biometric: Authentic Human'}</span>
+    </span>
+  );
+};
+
