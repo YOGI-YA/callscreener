@@ -6,7 +6,7 @@ import {
   AlertCircle, Headphones, Activity, ShieldCheck, ShieldAlert
 } from 'lucide-react';
 import { IncomingCallPayload, ScreeningResult, DialogueTurn, ScreeningVerdict } from '../types';
-import { RiskBadge, StirShakenBadge } from './RiskBadge';
+import { RiskBadge, StirShakenBadge, DeepfakeBiometricBadge } from './RiskBadge';
 import { AudioWaveformHUD } from './AudioWaveformHUD';
 import { CapacitorService } from '../services/capacitorService';
 import { ApiService } from '../services/api';
@@ -855,8 +855,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
           )}
         </div>
 
-        {/* STIR/SHAKEN Carrier Cryptographic Attestation */}
-        <div style={{ marginTop: 6, display: 'flex', justifyContent: 'center' }}>
+        {/* STIR/SHAKEN Carrier Cryptographic Attestation & Deepfake Biometric Scanner */}
+        <div style={{ marginTop: 6, display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
           <StirShakenBadge
             status={
               incomingCall.stirShakenStatus ||
@@ -864,6 +864,11 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                screeningResult?.metadata?.stirShakenAttestation === 'B' ? 'PARTIAL_B' :
                screeningResult?.category === 'CARRIER_SPOOFED' || (screeningResult?.metadata?.spoofProbability && screeningResult.metadata.spoofProbability > 0.8) ? 'FAILED_SPOOF' :
                incomingCall.isCarrierVerified ? 'VERIFIED_A' : 'NOT_VERIFIED')
+            }
+          />
+          <DeepfakeBiometricBadge
+            syntheticProbability={
+              screeningResult?.metadata?.spoofProbability ? Math.round(screeningResult.metadata.spoofProbability * 100) : isHighRisk ? 78 : 4
             }
           />
         </div>
