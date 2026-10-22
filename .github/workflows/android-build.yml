@@ -20,20 +20,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install Monorepo Dependencies
-        run: |
-          npm install --prefix backend
-          npm install --prefix frontend
+        run: npm install
 
       - name: Run Backend & Frontend Tests
         run: |
-          npm run test --prefix backend
-          npm run test --prefix frontend
+          npm run test --workspace=backend
+          npm run test --workspace=frontend
 
       - name: Build Web Production Bundle
-        run: |
-          npm run build --prefix frontend
+        run: npm run build --workspace=frontend
 
       - name: Copy Web Assets to Android Assets
         run: |
@@ -53,7 +51,7 @@ jobs:
 
       - name: Configure Android SDK local.properties
         run: |
-          echo "sdk.dir=/usr/local/lib/android/sdk" > android/local.properties
+          echo "sdk.dir=${ANDROID_HOME:-/usr/local/lib/android/sdk}" > android/local.properties
 
       - name: Build Debug APK with Gradle
         env:
