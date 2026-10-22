@@ -26,7 +26,7 @@ object CallHistoryStorage {
 
         // Mask any sensitive PII (credit cards, SSN, OTPs) from rationale and name
         val sanitizedCall = call.copy(
-            callerName = call.callerName?.let { SensitiveDataMasker.maskSensitiveText(it) },
+            callerName = SensitiveDataMasker.maskSensitiveText(call.callerName),
             rationale = SensitiveDataMasker.maskSensitiveText(call.rationale)
         )
 
