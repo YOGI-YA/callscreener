@@ -61,6 +61,7 @@ export interface ScreeningResult {
     ruleMatched?: string;
     detectedKeywords?: string[];
     llmModelUsed?: string;
+    stirShakenAttestation?: 'A' | 'B' | 'C' | 'FAILED' | 'NONE' | string;
   };
 }
 
