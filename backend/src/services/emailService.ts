@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { env } from '../config';
+import { config } from '../config';
 
 export interface EmailSettings {
   enabled: boolean;
