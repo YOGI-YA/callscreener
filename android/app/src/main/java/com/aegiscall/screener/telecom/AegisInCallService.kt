@@ -231,6 +231,16 @@ class AegisInCallService : InCallService() {
                         CallNotificationManager.showIncomingCallNotification(this@AegisInCallService, phoneNumber, callerName)
                         bringAppToFront()
                     }
+                    Call.STATE_DIALING, Call.STATE_CONNECTING -> {
+                        CallScreeningPlugin.broadcastCallState("CONNECTING")
+                        CallNotificationManager.showOngoingCallNotification(
+                            this@AegisInCallService,
+                            phoneNumber,
+                            callerName,
+                            isMuted = callAudioState?.isMuted ?: false,
+                            isSpeaker = callAudioState?.route == CallAudioState.ROUTE_SPEAKER
+                        )
+                    }
                     Call.STATE_ACTIVE -> {
                         CallScreeningPlugin.broadcastCallState("ACTIVE")
                         CallNotificationManager.showOngoingCallNotification(
