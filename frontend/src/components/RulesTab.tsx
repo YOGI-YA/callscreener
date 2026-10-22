@@ -16,6 +16,26 @@ export const RulesTab: React.FC<RulesTabProps> = ({ rules, onAddRule, onDeleteRu
   const [ruleType, setRuleType] = useState<ScreeningRule['type']>('BLACKLIST');
   const [testInput, setTestInput] = useState('');
 
+  const matchingRule = React.useMemo(() => {
+    if (!testInput.trim()) return null;
+    const cleanInput = testInput.replace(/[^0-9+]/g, '');
+    return rules.find((r) => {
+      if (!r.enabled) return false;
+      try {
+        if (r.type === 'PREFIX_BLOCK' || r.type === 'BLACKLIST' || r.type === 'WHITELIST') {
+          const cleanPattern = r.pattern.replace(/[^0-9+]/g, '');
+          if (cleanPattern && cleanInput.includes(cleanPattern)) {
+            return true;
+          }
+        }
+        const regex = new RegExp(r.pattern, 'i');
+        return regex.test(testInput) || (cleanInput ? regex.test(cleanInput) : false);
+      } catch {
+        return testInput.toLowerCase().includes(r.pattern.toLowerCase());
+      }
+    });
+  }, [testInput, rules]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!pattern.trim() || !description.trim()) return;
