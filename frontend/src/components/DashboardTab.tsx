@@ -7,6 +7,7 @@ import {
 import { CallScreeningStats, ScreeningResult } from '../types';
 import { RiskBadge } from './RiskBadge';
 import { ThreatMatrixAnalytics } from './ThreatMatrixAnalytics';
+import { ScamBaiterHoneypotWidget } from './ScamBaiterHoneypotWidget';
 import { CapacitorService } from '../services/capacitorService';
 
 interface DashboardTabProps {
@@ -280,6 +281,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
       {/* Extreme Feature: Threat Matrix Intelligence Radar & Heatmap */}
       <ThreatMatrixAnalytics logs={recentLogs} />
+
+      {/* Extreme Feature: Autonomous AI Defensive Counter-Honeypot (Scam-Baiter) */}
+      <ScamBaiterHoneypotWidget phoneNumber={recentLogs.find((l) => l.verdict === 'REJECT')?.phoneNumber} />
 
       {/* Quick Status Grid: Role & Engine */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
