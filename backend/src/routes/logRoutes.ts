@@ -8,13 +8,24 @@ export const logRouter = Router();
  * Retrieve screened call logs with search, filter, and pagination
  */
 logRouter.get('/', (req: Request, res: Response): void => {
-  const { search, verdict, category, limit } = req.query;
+  const { search, verdict, category, riskLevel, limit } = req.query;
+
+  let parsedLimit: number | undefined = undefined;
+  if (limit) {
+    const rawNum = parseInt(limit as string, 10);
+    if (!isNaN(rawNum) && rawNum > 0) {
+      parsedLimit = Math.min(rawNum, 500); // Clamped between 1 and 500 to prevent DoS
+    }
+  }
+
+  const sanitizedSearch = typeof search === 'string' ? search.trim().slice(0, 100) : undefined;
 
   const logs = CallLogStorage.getLogs({
-    search: typeof search === 'string' ? search : undefined,
+    search: sanitizedSearch,
     verdict: typeof verdict === 'string' ? verdict : undefined,
     category: typeof category === 'string' ? category : undefined,
-    limit: limit ? parseInt(limit as string, 10) : undefined
+    riskLevel: typeof riskLevel === 'string' ? riskLevel : undefined,
+    limit: parsedLimit
   });
 
   res.status(200).json({

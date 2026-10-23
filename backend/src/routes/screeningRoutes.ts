@@ -107,8 +107,15 @@ screeningRouter.get('/rules', (_req: Request, res: Response): void => {
 screeningRouter.post('/rules', (req: Request, res: Response): void => {
   const schema = z.object({
     type: z.enum(['WHITELIST', 'BLACKLIST', 'PREFIX_BLOCK', 'KEYWORD_BLOCK']),
-    pattern: z.string().min(1),
-    description: z.string().min(1),
+    pattern: z.string().min(1, 'Pattern is required').max(200, 'Pattern must be at most 200 characters').refine((val) => {
+      try {
+        new RegExp(val);
+        return true;
+      } catch {
+        return false;
+      }
+    }, { message: 'Invalid regular expression pattern syntax' }),
+    description: z.string().min(1).max(250),
     action: z.enum(['ALLOW', 'SILENCE', 'REJECT']),
     enabled: z.boolean().default(true)
   });

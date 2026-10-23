@@ -166,7 +166,7 @@ export class CallLogStorage {
     }
   }
 
-  public static getLogs(query?: { search?: string; verdict?: string; category?: string; limit?: number }): ScreeningResult[] {
+  public static getLogs(query?: { search?: string; verdict?: string; category?: string; riskLevel?: string; limit?: number }): ScreeningResult[] {
     this.initializeSeedData();
     let result = [...this.logs];
 
@@ -178,17 +178,21 @@ export class CallLogStorage {
       result = result.filter((l) => l.category === query.category);
     }
 
+    if (query?.riskLevel && query.riskLevel !== 'ALL') {
+      result = result.filter((l) => l.riskLevel === query.riskLevel);
+    }
+
     if (query?.search && query.search.trim()) {
       const s = query.search.toLowerCase();
       result = result.filter(
         (l) =>
-          l.phoneNumber.toLowerCase().includes(s) ||
-          l.callerName.toLowerCase().includes(s) ||
-          l.rationale.toLowerCase().includes(s)
+          (l.phoneNumber && l.phoneNumber.toLowerCase().includes(s)) ||
+          (l.callerName && l.callerName.toLowerCase().includes(s)) ||
+          (l.rationale && l.rationale.toLowerCase().includes(s))
       );
     }
 
-    if (query?.limit && query.limit > 0) {
+    if (typeof query?.limit === 'number' && query.limit > 0) {
       result = result.slice(0, query.limit);
     }
 
