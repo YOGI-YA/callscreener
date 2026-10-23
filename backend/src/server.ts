@@ -5,6 +5,7 @@ import { logRouter } from './routes/logRoutes.js';
 import { healthRouter } from './routes/healthRoutes.js';
 import { recordingRouter } from './routes/recordingRoutes.js';
 import { applySecurityHeaders, preventReplayAttacks } from './middleware/securityMiddleware.js';
+import { requireApiKeyAuth } from './middleware/authMiddleware.js';
 
 export function createServer(): Express {
   const app = express();
@@ -12,6 +13,7 @@ export function createServer(): Express {
   // Security Middleware
   app.use(applySecurityHeaders);
   app.use(preventReplayAttacks);
+  app.use(requireApiKeyAuth);
 
   // Core Middleware
   app.use(cors({

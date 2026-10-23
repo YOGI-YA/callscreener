@@ -7,6 +7,10 @@
 
 const CREDIT_CARD_REGEX = /\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\d{3})\d{11}|(?:\d{4}[\s\-]){3}\d{4})\b/g;
 const SSN_REGEX = /\b\d{3}[\-\s]?\d{2}[\-\s]?\d{4}\b/g;
+const AADHAAR_REGEX = /\b[2-9]\d{3}[\s\-]?\d{4}[\s\-]?\d{4}\b/g;
+const EMAIL_REGEX = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+const UPI_REGEX = /\b[a-zA-Z0-9.\-_]{2,256}@(okhdfcbank|oksbi|okaxis|okicici|paytm|ybl|ibl|axl|upi|apl)\b/gi;
+const PASSPORT_REGEX = /\b[A-PR-WYa-pr-wy][1-9]\d\s?\d{4}[1-9]\b/g;
 const OTP_REGEX = /\b(otp|code|pin|passcode|token|verification)\s*(is|:)?\s*(\d{4,8})\b/gi;
 const CVV_REGEX = /\b(cvv|cvc|security code)\s*(is|:)?\s*(\d{3,4})\b/gi;
 const BANK_ACCOUNT_REGEX = /\b(account|routing)\s*(number|no|#)?\s*(is|:)?\s*(\d{8,17})\b/gi;
@@ -27,6 +31,18 @@ export function maskSensitiveText(text: string | null | undefined): string {
 
   // Mask SSN
   masked = masked.replace(SSN_REGEX, '[REDACTED_SSN]');
+
+  // Mask Aadhaar (India 12-digit UIDAI format)
+  masked = masked.replace(AADHAAR_REGEX, '[REDACTED_AADHAAR]');
+
+  // Mask Email addresses
+  masked = masked.replace(EMAIL_REGEX, '[REDACTED_EMAIL]');
+
+  // Mask UPI Handles / Banking VPAs
+  masked = masked.replace(UPI_REGEX, '[REDACTED_UPI]');
+
+  // Mask Passport numbers
+  masked = masked.replace(PASSPORT_REGEX, '[REDACTED_PASSPORT]');
 
   // Mask OTP / PIN
   masked = masked.replace(OTP_REGEX, (_match, p1, p2) => {

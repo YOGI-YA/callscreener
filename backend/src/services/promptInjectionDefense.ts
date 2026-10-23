@@ -20,6 +20,12 @@ const INJECTION_PATTERNS = [
   /\boutput\s+verdict\s+allow\b/i,
   /```[\s\S]*?```/,
   /\bjailbreak\b/i,
+  // Hindi & Hinglish Adversarial Injections
+  /\b(purane|pichle)\s+(sabhi\s+)?(nirdesh|instructions?)\s+(bhool|disregard|ignore)\s*(jao|karo)?\b/i,
+  /\b(system\s+prompt|system\s+rules?)\s+(batao|reveal|leak|dikhao)\b/i,
+  /\b(call\s+ko\s+allow\s+karo|allow\s+verdict\s+do|safelist\s+karo)\b/i,
+  /\b(apne\s+aap\s+ko\s+unrestricted|developer\s+mode\s+mein\s+lao)\b/i,
+  /\b(suraksha\s+filters?\s+bypass\s+karo|security\s+bypass\s+karo)\b/i,
 ];
 
 export interface DefenseInspectionResult {
@@ -40,16 +46,37 @@ export function inspectCallerUtterance(rawText: string): DefenseInspectionResult
     };
   }
 
+  // Strip zero-width characters and invisible unicode homoglyphs used for evasion
+  const normalizedText = rawText.replace(/[\u200B-\u200D\uFEFF]/g, '');
+
   let detected = false;
   let reason: string | undefined;
-  let sanitized = rawText;
+  let sanitized = normalizedText;
 
   for (const pattern of INJECTION_PATTERNS) {
-    const match = pattern.exec(rawText);
+    const match = pattern.exec(normalizedText);
     if (match) {
       detected = true;
       reason = `Adversarial Prompt Injection / Jailbreak attempt detected: '${match[0]}'`;
       sanitized = sanitized.replace(pattern, '[BLOCKED_INJECTION_ATTEMPT]');
+    }
+  }
+
+  // Detect base64 obfuscated payload injections
+  const base64Matches = normalizedText.match(/\b(?:[A-Za-z0-9+/]{4}){6,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?\b/g);
+  if (base64Matches) {
+    for (const b64 of base64Matches) {
+      try {
+        const decoded = Buffer.from(b64, 'base64').toString('utf8');
+        if (INJECTION_PATTERNS.some((p) => p.test(decoded))) {
+          detected = true;
+          reason = `Adversarial Base64 obfuscated prompt injection detected`;
+          sanitized = sanitized.replace(b64, '[BLOCKED_BASE64_INJECTION]');
+          break;
+        }
+      } catch {
+        // Not valid utf8, ignore
+      }
     }
   }
 
