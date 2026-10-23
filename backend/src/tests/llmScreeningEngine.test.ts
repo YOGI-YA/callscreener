@@ -81,4 +81,32 @@ describe('LLMScreeningEngine', () => {
     expect(result.category).toBe('MEDICAL_APPOINTMENT');
     expect(result.riskScore).toBeLessThanOrEqual(20);
   });
+
+  it('detects high-urgency Digital Arrest extortion scam and issues critical REJECT verdict', async () => {
+    const result = await LLMScreeningEngine.screenCall({
+      phoneNumber: '+91-99887-76655',
+      callerName: 'CBI Cyber Crime Cell',
+      simulatedAudioTranscript: 'This is an urgent digital arrest notice. A customs parcel narcotics shipment was seized under your Aadhaar number. Transfer verification bail fee.',
+      callerIntent: 'Digital arrest money extortion'
+    });
+
+    expect(result.verdict).toBe('REJECT');
+    expect(result.riskScore).toBeGreaterThanOrEqual(95);
+    expect(result.category).toBe('PHISHING_SCAM');
+    expect(result.rationale).toMatch(/digital arrest/i);
+  });
+
+  it('generates acoustic deepfake biometric telemetry and marks synthetic artifacts on robocalls', async () => {
+    const result = await LLMScreeningEngine.screenCall({
+      phoneNumber: '+1-800-555-0199',
+      callerName: 'Automated Loan AI Bot',
+      simulatedAudioTranscript: 'This is an automated recorded line from fast approvals. Press 1 to speak with an agent.',
+      callerIntent: 'Robocall AI'
+    });
+
+    expect(result.metadata?.deepfakeMetrics).toBeDefined();
+    expect(result.metadata?.deepfakeMetrics?.syntheticArtifactsDetected).toBe(true);
+    expect(result.metadata?.deepfakeMetrics?.voiceCloneConfidence).toBeGreaterThanOrEqual(0.8);
+    expect(result.metadata?.deepfakeMetrics?.deepfakeRiskRating).toMatch(/SUSPECTED_SYNTHETIC|CONFIRMED_DEEPFAKE_CLONE/);
+  });
 });

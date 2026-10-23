@@ -51,6 +51,14 @@ export interface IncomingCallPayload {
   isCarrierVerified?: boolean;
 }
 
+export interface DeepfakeAcousticTelemetry {
+  voiceCloneConfidence: number; // 0.0 to 1.0
+  syntheticArtifactsDetected: boolean;
+  spectralDissonanceScore: number; // 0 to 100
+  deepfakeRiskRating: 'GENUINE_HUMAN' | 'UNCERTAIN' | 'SUSPECTED_SYNTHETIC' | 'CONFIRMED_DEEPFAKE_CLONE';
+  detectedVoiceModelFamily?: string;
+}
+
 export interface ScreeningResult {
   id: string;
   phoneNumber: string;
@@ -76,6 +84,7 @@ export interface ScreeningResult {
     detectedKeywords?: string[];
     llmModelUsed?: string;
     stirShakenAttestation?: string;
+    deepfakeMetrics?: DeepfakeAcousticTelemetry;
   };
 }
 

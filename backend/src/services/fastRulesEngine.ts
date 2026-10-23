@@ -65,7 +65,14 @@ export class FastRulesEngine {
     { phrase: 'sim card block', score: 93, category: 'PHISHING_SCAM' as const, reason: 'Detected fake telecom SIM card deactivation scam' },
     { phrase: 'बिजली बिल', score: 96, category: 'PHISHING_SCAM' as const, reason: 'Detected Devanagari Hindi electricity disconnection scam' },
     { phrase: 'ओटीपी', score: 98, category: 'PHISHING_SCAM' as const, reason: 'Detected Devanagari Hindi OTP harvesting attempt' },
-    { phrase: 'लॉटरी', score: 95, category: 'PHISHING_SCAM' as const, reason: 'Detected Devanagari Hindi lottery scam' }
+    { phrase: 'लॉटरी', score: 95, category: 'PHISHING_SCAM' as const, reason: 'Detected Devanagari Hindi lottery scam' },
+    // Digital Arrest & Law Enforcement Impersonation Vectors
+    { phrase: 'digital arrest', score: 99, category: 'PHISHING_SCAM' as const, reason: 'Detected high-threat Digital Arrest extortion scam impersonating police/CBI' },
+    { phrase: 'cbi arrest warrant', score: 99, category: 'PHISHING_SCAM' as const, reason: 'Detected fake CBI arrest warrant extortion scam' },
+    { phrase: 'customs parcel narcotics', score: 98, category: 'PHISHING_SCAM' as const, reason: 'Detected fake customs drug/contraband interception parcel scam' },
+    { phrase: 'cyber crime police department', score: 98, category: 'PHISHING_SCAM' as const, reason: 'Detected law enforcement cyber crime impersonation scam' },
+    { phrase: 'trai sim disconnect illegal', score: 97, category: 'PHISHING_SCAM' as const, reason: 'Detected fake TRAI illegal messaging SIM deactivation threat' },
+    { phrase: 'डिजिटल अरेस्ट', score: 99, category: 'PHISHING_SCAM' as const, reason: 'Detected Devanagari Hindi Digital Arrest extortion scam' }
   ];
 
   private static customRules: ScreeningRule[] = [];

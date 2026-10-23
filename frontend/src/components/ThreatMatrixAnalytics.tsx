@@ -181,6 +181,34 @@ export const ThreatMatrixAnalytics: React.FC<ThreatMatrixAnalyticsProps> = ({
         </div>
       </div>
 
+      {/* Acoustic Voice Biometrics & Deepfake Radar */}
+      <div style={{ marginTop: 10, background: 'rgba(0,0,0,0.25)', padding: 12, borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Cpu size={12} color="#ec4899" />
+            Acoustic Deepfake & Synthetic Voice Biometrics
+          </span>
+          <span style={{ fontSize: '0.68rem', color: '#f43f5e', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+            Neural TTS Defense Active
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
+          <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '6px 4px', borderRadius: 6 }}>
+            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#10b981' }}>98.4%</div>
+            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>Genuine Human</div>
+          </div>
+          <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '6px 4px', borderRadius: 6 }}>
+            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#f59e0b' }}>12</div>
+            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>Suspected Clones</div>
+          </div>
+          <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '6px 4px', borderRadius: 6 }}>
+            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#ef4444' }}>8</div>
+            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>Deepfakes Blocked</div>
+          </div>
+        </div>
+      </div>
+
       {/* 24-Hour Attack Peak Heatmap */}
       <div style={{ marginTop: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>

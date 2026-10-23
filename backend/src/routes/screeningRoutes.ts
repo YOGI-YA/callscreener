@@ -159,6 +159,8 @@ screeningRouter.get('/threat-matrix', (_req: Request, res: Response): void => {
   const attestationB = logs.filter((l) => l.metadata?.stirShakenAttestation === 'B').length;
   const attestationC = logs.filter((l) => l.metadata?.stirShakenAttestation === 'C').length;
   const spoofed = logs.filter((l) => (l.metadata?.spoofProbability ?? 0) > 0.75).length;
+  const digitalArrestCount = logs.filter((l) => (l.rationale && l.rationale.toLowerCase().includes('digital arrest')) || (l.metadata?.detectedKeywords && l.metadata.detectedKeywords.some((k: string) => k.includes('digital arrest')))).length;
+  const deepfakeClonesCount = logs.filter((l) => l.metadata?.deepfakeMetrics?.deepfakeRiskRating === 'CONFIRMED_DEEPFAKE_CLONE' || l.metadata?.deepfakeMetrics?.deepfakeRiskRating === 'SUSPECTED_SYNTHETIC').length;
 
   res.status(200).json({
     success: true,
@@ -166,11 +168,18 @@ screeningRouter.get('/threat-matrix', (_req: Request, res: Response): void => {
       totalThreatsAnalyzed: logs.length,
       mitigationRatePercent: mitigationRate,
       carrierSpoofAttempts: spoofed,
+      digitalArrestAttempts: digitalArrestCount,
+      deepfakeClonesIntercepted: deepfakeClonesCount,
       attestationBreakdown: {
         verifiedA: attestationA,
         partialB: attestationB,
         gatewayC: attestationC,
         spoofedFailed: spoofed
+      },
+      acousticBiometricBreakdown: {
+        genuineHuman: logs.filter((l) => l.metadata?.deepfakeMetrics?.deepfakeRiskRating === 'GENUINE_HUMAN' || (!l.metadata?.deepfakeMetrics && l.verdict === 'ALLOW')).length,
+        syntheticSuspected: logs.filter((l) => l.metadata?.deepfakeMetrics?.deepfakeRiskRating === 'SUSPECTED_SYNTHETIC').length,
+        confirmedDeepfake: logs.filter((l) => l.metadata?.deepfakeMetrics?.deepfakeRiskRating === 'CONFIRMED_DEEPFAKE_CLONE').length
       },
       threatVectorDistribution: {
         phishing: logs.filter((l) => l.category === 'PHISHING_SCAM').length,

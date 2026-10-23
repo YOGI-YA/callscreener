@@ -27,6 +27,7 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'LOGS' | 'RECORDINGS'>('LOGS');
   const [searchTerm, setSearchTerm] = useState('');
   const [verdictFilter, setVerdictFilter] = useState<string>('ALL');
+  const [riskLevelFilter, setRiskLevelFilter] = useState<string>('ALL');
 
   // Recordings state
   const [recordings, setRecordings] = useState<RecordedCallItem[]>([]);
@@ -127,8 +128,9 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
       log.rationale.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesVerdict = verdictFilter === 'ALL' || log.verdict === verdictFilter;
+    const matchesRiskLevel = riskLevelFilter === 'ALL' || log.riskLevel === riskLevelFilter;
 
-    return matchesSearch && matchesVerdict;
+    return matchesSearch && matchesVerdict && matchesRiskLevel;
   });
 
   const filteredRecordings = recordings.filter((r) => {
@@ -257,7 +259,7 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
          ──────────────────────────────────────────────────────────────── */}
       {activeSubTab === 'LOGS' && (
         <>
-          {/* Filter Pills */}
+          {/* Filter Pills: Verdict */}
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
             {['ALL', 'REJECT', 'SILENCE', 'ALLOW'].map((v) => (
               <button
@@ -275,6 +277,37 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
                 }}
               >
                 {v === 'ALL' ? 'All Calls' : v === 'REJECT' ? 'Blocked' : v === 'SILENCE' ? 'Silenced' : 'Allowed'}
+              </button>
+            ))}
+          </div>
+
+          {/* Filter Pills: Risk Level */}
+          <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 2 }}>
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', marginRight: 4 }}>
+              RISK:
+            </span>
+            {[
+              { id: 'ALL', label: 'All' },
+              { id: 'CRITICAL_SPAM', label: 'Critical' },
+              { id: 'SUSPICIOUS', label: 'Suspicious' },
+              { id: 'LOW', label: 'Low' },
+              { id: 'SAFE', label: 'Safe' },
+            ].map((r) => (
+              <button
+                key={r.id}
+                onClick={() => setRiskLevelFilter(r.id)}
+                style={{
+                  padding: '3px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.68rem',
+                  fontWeight: 600,
+                  background: riskLevelFilter === r.id ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+                  color: riskLevelFilter === r.id ? 'var(--accent-glow)' : 'var(--text-muted)',
+                  border: '1px solid',
+                  borderColor: riskLevelFilter === r.id ? 'var(--accent-glow)' : 'rgba(255, 255, 255, 0.08)'
+                }}
+              >
+                {r.label}
               </button>
             ))}
           </div>
@@ -326,6 +359,22 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
                       </div>
                     </div>
                   </div>
+
+                  {/* Threat / Biometric Badges */}
+                  {(log.metadata?.deepfakeMetrics?.syntheticArtifactsDetected || log.rationale?.toLowerCase().includes('digital arrest') || log.metadata?.detectedKeywords?.includes('digital arrest')) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '2px 0' }}>
+                      {log.metadata?.deepfakeMetrics?.syntheticArtifactsDetected && (
+                        <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.16)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                          🤖 Deepfake Voice Clone
+                        </span>
+                      )}
+                      {(log.rationale?.toLowerCase().includes('digital arrest') || log.metadata?.detectedKeywords?.includes('digital arrest')) && (
+                        <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(220, 38, 38, 0.22)', color: '#fca5a5', border: '1px solid rgba(220, 38, 38, 0.5)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                          🚨 Digital Arrest Scam
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   <div
                     onClick={() => onSelectLog(log)}
