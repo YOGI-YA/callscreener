@@ -47,11 +47,11 @@ export function requireApiKeyAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  // Constant-time comparison to prevent timing side-channel attacks
-  const expectedBuf = Buffer.from(configuredKey);
-  const providedBuf = Buffer.from(providedToken);
+  // Constant-time comparison using fixed-size SHA-256 digests to prevent length-leakage timing attacks
+  const expectedHash = crypto.createHash('sha256').update(configuredKey).digest();
+  const providedHash = crypto.createHash('sha256').update(providedToken).digest();
 
-  if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
+  if (!crypto.timingSafeEqual(expectedHash, providedHash)) {
     res.status(403).json({
       success: false,
       error: 'AUTH_INVALID',
