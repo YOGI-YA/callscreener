@@ -45,12 +45,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     : recentLogs;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="responsive-dashboard-grid">
       {/* ────────────────────────────────────────────────────────────────
           TRUECALLER-STYLE TOP SEARCH BAR
          ──────────────────────────────────────────────────────────────── */}
       <div
-        className="glass-card"
+        className="glass-card grid-col-full"
         style={{
           padding: '10px 14px',
           display: 'flex',
@@ -110,7 +110,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       {/* Action Required: Telecom Role Warning Banner */}
       {!roleGranted && (
         <div
-          className="glass-card"
+          className="glass-card grid-col-full"
           style={{
             background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%)',
             border: '1px solid rgba(239, 68, 68, 0.45)',
@@ -145,7 +145,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           TRUECALLER-STYLE SPAM RADAR SHIELD (HERO STATUS)
          ──────────────────────────────────────────────────────────────── */}
       <div
-        className="glass-card"
+        className="glass-card grid-col-full"
         style={{
           background: 'radial-gradient(ellipse at 80% 20%, rgba(99, 102, 241, 0.22) 0%, rgba(15, 23, 42, 0.95) 100%)',
           border: '1px solid var(--border-glow)',
@@ -319,7 +319,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       </div>
 
       {/* Recent Screened Activity */}
-      <div>
+      <div className="grid-col-full">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
             Recent Caller Radar
