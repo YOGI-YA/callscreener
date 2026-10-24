@@ -81,7 +81,38 @@ export class FastRulesEngine {
     return [...this.defaultRules, ...this.customRules];
   }
 
+  /**
+   * Validates pattern against catastrophic ReDoS patterns, nested quantifiers, and length bounds
+   */
+  public static validateRulePattern(pattern: string): { valid: boolean; error?: string } {
+    if (!pattern || typeof pattern !== 'string') {
+      return { valid: false, error: 'Pattern must be a non-empty string' };
+    }
+
+    if (pattern.length > 120) {
+      return { valid: false, error: 'Pattern exceeds maximum length of 120 characters' };
+    }
+
+    // ReDoS heuristic check: nested repetitions such as (a+)+ or (x*)* or (.*)+
+    const dangerousBacktracking = /(\([^()]*[+*][^()]*\)[+*{]|\b[+*]{2,})/i;
+    if (dangerousBacktracking.test(pattern)) {
+      return { valid: false, error: 'Potentially vulnerable ReDoS pattern (nested quantifiers detected)' };
+    }
+
+    try {
+      new RegExp(pattern);
+      return { valid: true };
+    } catch (e: any) {
+      return { valid: false, error: `Invalid Regular Expression: ${e.message}` };
+    }
+  }
+
   public static addRule(rule: Omit<ScreeningRule, 'id' | 'createdAt'>): ScreeningRule {
+    const check = this.validateRulePattern(rule.pattern);
+    if (!check.valid) {
+      throw new Error(`INVALID_RULE_PATTERN: ${check.error}`);
+    }
+
     const newRule: ScreeningRule = {
       ...rule,
       id: `custom-rule-${uuidv4().substring(0, 8)}`,
