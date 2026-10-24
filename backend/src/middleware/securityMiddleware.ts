@@ -70,10 +70,10 @@ export function verifyHmacSignature(secretKey?: string) {
     const payload = JSON.stringify(req.body || {});
     const expected = crypto.createHmac('sha256', key).update(payload).digest('hex');
 
-    const sigBuf = Buffer.from(signature);
-    const expBuf = Buffer.from(expected);
+    const sigHash = crypto.createHash('sha256').update(signature).digest();
+    const expHash = crypto.createHash('sha256').update(expected).digest();
 
-    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+    if (!crypto.timingSafeEqual(sigHash, expHash)) {
       res.status(401).json({
         success: false,
         error: 'SIGNATURE_INVALID',
@@ -84,4 +84,26 @@ export function verifyHmacSignature(secretKey?: string) {
 
     next();
   };
+}
+
+/**
+ * Strict MIME Type and Payload Validator for Telecom Audio Endpoints
+ */
+export function validateAudioMimeType(req: Request, res: Response, next: NextFunction): void {
+  const contentType = req.headers['content-type']?.toLowerCase();
+  if (!contentType) return next();
+
+  if (contentType.includes('audio/') || req.path.includes('/recordings/upload')) {
+    const allowed = ['audio/wav', 'audio/x-wav', 'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/webm', 'audio/3gpp', 'audio/aac'];
+    const isAllowed = allowed.some((type) => contentType.includes(type));
+    if (!isAllowed) {
+      res.status(415).json({
+        success: false,
+        error: 'UNSUPPORTED_MEDIA_TYPE',
+        message: 'Invalid audio MIME type. Only certified telecom audio formats are permitted.'
+      });
+      return;
+    }
+  }
+  next();
 }

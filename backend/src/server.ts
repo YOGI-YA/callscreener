@@ -22,7 +22,7 @@ export function createServer(): Express {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-api-token', 'x-aegis-signature', 'x-aegis-timestamp']
   }));
-  app.use(express.json({ limit: '25mb' }));
+  app.use(express.json({ limit: '2mb' }));
 
   // Request logger in dev
   app.use((req: Request, _res: Response, next: NextFunction) => {
