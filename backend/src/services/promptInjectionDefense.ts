@@ -26,6 +26,14 @@ const INJECTION_PATTERNS = [
   /\b(call\s+ko\s+allow\s+karo|allow\s+verdict\s+do|safelist\s+karo)\b/i,
   /\b(apne\s+aap\s+ko\s+unrestricted|developer\s+mode\s+mein\s+lao)\b/i,
   /\b(suraksha\s+filters?\s+bypass\s+karo|security\s+bypass\s+karo)\b/i,
+  // Delimiter Hijacking & Tag Smuggling
+  /<script[\s\S]*?>/i,
+  /<\/?[a-z][\s\S]*>/i,
+  /\b(role:\s*assistant|role:\s*system)\b/i,
+  /\[system_prompt\]/i,
+  /\[SYSTEM_MESSAGE\]/i,
+  /\b(print|echo|repeat|reveal|dump)\s+(your\s+)?(system\s+prompt|initial\s+prompt|hidden\s+rules|developer\s+instructions)\b/i,
+  /\b(act\s+as\s+an\s+unfiltered|behave\s+without\s+any\s+safety\s+filter)\b/i
 ];
 
 export interface DefenseInspectionResult {
