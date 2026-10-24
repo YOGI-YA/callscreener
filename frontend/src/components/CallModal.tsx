@@ -56,6 +56,7 @@ export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule })
         className="glass-card"
         style={{
           width: '100%',
+          maxWidth: '560px',
           maxHeight: '90%',
           overflowY: 'auto',
           background: 'rgba(15, 23, 42, 0.96)',
