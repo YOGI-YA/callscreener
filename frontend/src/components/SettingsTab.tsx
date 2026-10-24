@@ -1016,6 +1016,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
                 }}
               />
               <button
+                data-testid="add-safeword-btn"
                 onClick={handleAddSafeWord}
                 className="btn-primary"
                 style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4 }}

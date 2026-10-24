@@ -149,7 +149,9 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
 
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+    const url = typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function'
+      ? URL.createObjectURL(blob)
+      : 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `AegisCall_Fraud_Report_${new Date().toISOString().slice(0, 10)}.csv`);
