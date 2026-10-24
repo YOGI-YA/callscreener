@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Settings, ShieldCheck, Server, Smartphone, ExternalLink, HelpCircle,
-  Check, RefreshCw, AlertTriangle, Phone, Mic, Play, Trash2, Mail, Send, CheckCircle2
+  Check, RefreshCw, AlertTriangle, Phone, Mic, Play, Trash2, Mail, Send, CheckCircle2,
+  Key, Plus
 } from 'lucide-react';
 import { CapacitorService } from '../services/capacitorService';
 import { ApiService } from '../services/api';
@@ -54,6 +55,45 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
   const [voiceTone, setVoiceTone] = useState<'NEURAL_NATURAL' | 'AUTHORITATIVE' | 'CONCISE'>(() => {
     return (localStorage.getItem('aegis_screener_voice_tone') as any) || 'NEURAL_NATURAL';
   });
+
+  // Emergency Safe-Words (SOS Voice Override) State
+  const [safeWords, setSafeWords] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('aegis_emergency_safewords');
+      return stored ? JSON.parse(stored) : ['falcon blue', 'code red', 'emergency override'];
+    } catch {
+      return ['falcon blue', 'code red', 'emergency override'];
+    }
+  });
+  const [safeWordsEnabled, setSafeWordsEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('aegis_emergency_safewords_enabled') !== 'false';
+  });
+  const [newSafeWordInput, setNewSafeWordInput] = useState('');
+  const [safeWordNotice, setSafeWordNotice] = useState<string | null>(null);
+
+  const handleAddSafeWord = () => {
+    const trimmed = newSafeWordInput.trim().toLowerCase();
+    if (!trimmed || trimmed.length < 3) return;
+    if (!safeWords.includes(trimmed)) {
+      const updated = [...safeWords, trimmed];
+      setSafeWords(updated);
+      localStorage.setItem('aegis_emergency_safewords', JSON.stringify(updated));
+      setNewSafeWordInput('');
+      setSafeWordNotice(`Safe-word "${trimmed}" added!`);
+      setTimeout(() => setSafeWordNotice(null), 2500);
+    }
+  };
+
+  const handleRemoveSafeWord = (word: string) => {
+    const updated = safeWords.filter((w) => w !== word);
+    setSafeWords(updated);
+    localStorage.setItem('aegis_emergency_safewords', JSON.stringify(updated));
+  };
+
+  const handleToggleSafeWordsEnabled = (val: boolean) => {
+    setSafeWordsEnabled(val);
+    localStorage.setItem('aegis_emergency_safewords_enabled', String(val));
+  };
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -834,6 +874,122 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
                 }}
               >
                 {emailNotice.message}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Emergency Safe-Words / Family SOS Override Card */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Key size={18} color="#f59e0b" />
+            <div>
+              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>
+                Family Emergency Safe-Word (SOS Voice Override)
+              </span>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                Instant priority VIP bypass when spoken by caller
+              </div>
+            </div>
+          </div>
+
+          <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={safeWordsEnabled}
+              onChange={(e) => handleToggleSafeWordsEnabled(e.target.checked)}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span
+              style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundColor: safeWordsEnabled ? 'var(--color-safe)' : 'rgba(255,255,255,0.15)',
+                borderRadius: 24,
+                transition: '0.3s'
+              }}
+            />
+            <span
+              style={{
+                position: 'absolute',
+                top: 2,
+                left: safeWordsEnabled ? 22 : 2,
+                width: 20,
+                height: 20,
+                backgroundColor: '#fff',
+                borderRadius: '50%',
+                transition: '0.3s'
+              }}
+            />
+          </label>
+        </div>
+
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+          If a family member calls from an unknown phone in an emergency, uttering your secret safe-word phrase instructs the AI screener to bypass all spam filters and ring at maximum volume immediately.
+        </p>
+
+        {safeWordsEnabled && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--border-subtle)', paddingTop: 10 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {safeWords.map((word) => (
+                <span
+                  key={word}
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    color: '#fcd34d',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <span>"{word}"</span>
+                  <button
+                    onClick={() => handleRemoveSafeWord(word)}
+                    style={{ color: '#f87171', fontSize: '0.75rem', display: 'flex', alignItems: 'center' }}
+                    title="Remove safe-word"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                placeholder="Enter secret safe-word (e.g. falcon blue)"
+                value={newSafeWordInput}
+                onChange={(e) => setNewSafeWordInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddSafeWord()}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  background: 'rgba(0,0,0,0.35)',
+                  border: '1px solid var(--border-medium)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.82rem',
+                  color: '#fff'
+                }}
+              />
+              <button
+                onClick={handleAddSafeWord}
+                className="btn-primary"
+                style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <Plus size={14} /> Add
+              </button>
+            </div>
+
+            {safeWordNotice && (
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-safe)', fontWeight: 600 }}>
+                {safeWordNotice}
               </div>
             )}
           </div>
