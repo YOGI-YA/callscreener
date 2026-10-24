@@ -11,6 +11,8 @@ export type CallerCategory =
   | 'MEDICAL_APPOINTMENT'
   | 'VERIFIED_CONTACT'
   | 'CARRIER_SPOOFED'
+  | 'EMERGENCY_OVERRIDE'
+  | 'SYNTHETIC_BOT'
   | 'UNKNOWN';
 
 export type ScreeningEngine =
@@ -18,6 +20,10 @@ export type ScreeningEngine =
   | 'FAST_LOCAL_FALLBACK'
   | 'WHITELIST_RULE'
   | 'BLACKLIST_RULE'
+  | 'PROMPT_INJECTION_DEFENSE'
+  | 'STIR_SHAKEN_VERIFIER'
+  | 'EMERGENCY_SAFEWORD'
+  | 'ACOUSTIC_BOT_DETECTOR'
   | 'SIMULATION';
 
 export interface DialogueTurn {
@@ -85,6 +91,49 @@ export interface ScreeningResult {
     llmModelUsed?: string;
     stirShakenAttestation?: string;
     deepfakeMetrics?: DeepfakeAcousticTelemetry;
+    emergencyOverrideTriggered?: boolean;
+    acousticBotTelemetry?: AcousticBotTelemetry;
+  };
+}
+
+export interface AcousticBotTelemetry {
+  isRobocallBot: boolean;
+  roboticCadenceScore: number; // 0 to 100
+  spectralFlatnessScore: number; // 0 to 100
+  soundboardConfidence: number; // 0.0 to 1.0
+  audioFingerprintHash: string;
+}
+
+export interface EmergencySafeWordConfig {
+  enabled: boolean;
+  safeWords: string[];
+  vipRingerBypass: boolean;
+  notifyGuardians: boolean;
+}
+
+export interface WebhookAlertConfig {
+  id: string;
+  name: string;
+  url: string;
+  secretKey?: string;
+  enabled: boolean;
+  triggerOnCritical: boolean;
+  triggerOnEmergency: boolean;
+}
+
+export interface FraudReportPayload {
+  reportId: string;
+  generatedAt: string;
+  reportingAgency: 'FCC' | 'FTC' | 'IC3' | 'TRAI';
+  incidentDetails: {
+    callerNumber: string;
+    callerName: string;
+    timestamp: string;
+    category: string;
+    riskScore: number;
+    spoofProbability: number;
+    transcriptSummary: string;
+    syntheticArtifacts: boolean;
   };
 }
 
