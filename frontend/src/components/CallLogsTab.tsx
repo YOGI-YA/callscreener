@@ -120,6 +120,46 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
     setTimeout(() => setAudioNotice(null), 3500);
   };
 
+  const handleExportFraudReport = () => {
+    CapacitorService.triggerHapticFeedback();
+    const headers = [
+      'Incident_ID',
+      'Timestamp',
+      'Caller_Number',
+      'Caller_Name',
+      'Verdict',
+      'Risk_Score',
+      'Category',
+      'Carrier_Spoof_Probability',
+      'Robocall_Acoustic_Fingerprint',
+      'Rationale_Evidence'
+    ];
+    const rows = filteredLogs.map((log) => [
+      log.id,
+      log.timestamp,
+      log.phoneNumber,
+      `"${(log.callerName || '').replace(/"/g, '""')}"`,
+      log.verdict,
+      log.riskScore,
+      log.category,
+      Math.round((log.metadata?.spoofProbability ?? (log.riskScore / 100)) * 100) + '%',
+      log.metadata?.acousticBotTelemetry?.audioFingerprintHash || 'NOT_CAPTURED',
+      `"${(log.rationale || '').replace(/"/g, '""')}"`
+    ].join(','));
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `AegisCall_Fraud_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setAudioNotice('National Fraud Complaint Report (CSV) downloaded!');
+    setTimeout(() => setAudioNotice(null), 3000);
+  };
+
   const filteredLogs = logs.filter((log) => {
     const matchesSearch =
       searchTerm.trim() === '' ||
@@ -312,18 +352,39 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
             ))}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
               {filteredLogs.length} Screened Events
             </span>
-            {logs.length > 0 && (
-              <button
-                onClick={onClearAll}
-                style={{ fontSize: '0.75rem', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}
-              >
-                <Trash2 size={13} /> Clear History
-              </button>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {filteredLogs.length > 0 && (
+                <button
+                  onClick={handleExportFraudReport}
+                  className="btn-secondary"
+                  style={{
+                    fontSize: '0.74rem',
+                    fontWeight: 600,
+                    padding: '4px 8px',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                  title="Export official incident report in FTC/FCC regulatory format"
+                >
+                  <Download size={13} color="var(--accent-glow)" />
+                  <span>Export Report (CSV)</span>
+                </button>
+              )}
+              {logs.length > 0 && (
+                <button
+                  onClick={onClearAll}
+                  style={{ fontSize: '0.74rem', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: 4 }}
+                >
+                  <Trash2 size={13} /> Clear
+                </button>
+              )}
+            </div>
           </div>
 
           {filteredLogs.length === 0 ? (
