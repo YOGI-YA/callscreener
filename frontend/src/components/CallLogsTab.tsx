@@ -339,7 +339,7 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
               {filteredLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="glass-card"
+                  className="glass-card responsive-call-card"
                   style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
