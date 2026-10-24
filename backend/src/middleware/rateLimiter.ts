@@ -35,7 +35,10 @@ export class RateLimiter {
         return next();
       }
 
-      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+      // Validate and extract client IP safely
+      let rawIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+      // Sanitize IP representation to prevent memory injection attacks
+      const clientIp = rawIp.replace(/[^\w.:-]/g, '').slice(0, 45) || 'unknown';
       const now = Date.now();
 
       let bucket = this.buckets.get(clientIp);
@@ -64,6 +67,10 @@ export class RateLimiter {
         retryAfterSec,
       });
     };
+  }
+
+  public reset(): void {
+    this.buckets.clear();
   }
 }
 
