@@ -5,7 +5,7 @@ import {
   AlertTriangle, MessageSquare, Activity
 } from 'lucide-react';
 import { ScreeningResult, ScreeningVerdict } from '../types';
-import { RiskBadge, StirShakenBadge } from './RiskBadge';
+import { RiskBadge, StirShakenBadge, AcousticBotBadge } from './RiskBadge';
 import { VoicemailAudioPlayer } from './VoicemailAudioPlayer';
 
 interface CallModalProps {
@@ -104,6 +104,13 @@ export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule })
           <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
             Category: <strong>{log.category.replace('_', ' ')}</strong>
           </span>
+          {log.metadata?.acousticBotTelemetry && (
+            <AcousticBotBadge
+              isRobocall={log.metadata.acousticBotTelemetry.isRobocallBot}
+              cadenceScore={log.metadata.acousticBotTelemetry.roboticCadenceScore}
+              fingerprint={log.metadata.acousticBotTelemetry.audioFingerprintHash}
+            />
+          )}
         </div>
 
         {/* PII Redaction Privacy Bar */}

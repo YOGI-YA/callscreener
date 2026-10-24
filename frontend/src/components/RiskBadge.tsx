@@ -250,3 +250,34 @@ export const DeepfakeBiometricBadge: React.FC<DeepfakeBiometricBadgeProps> = ({
   );
 };
 
+export const AcousticBotBadge: React.FC<{
+  isRobocall?: boolean;
+  cadenceScore?: number;
+  fingerprint?: string;
+}> = ({ isRobocall, cadenceScore = 0, fingerprint }) => {
+  if (!isRobocall && cadenceScore < 60) return null;
+
+  return (
+    <span
+      className="badge-acoustic-bot"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '3px 8px',
+        borderRadius: 'var(--radius-sm)',
+        background: 'rgba(239, 68, 68, 0.16)',
+        border: '1px solid rgba(239, 68, 68, 0.45)',
+        color: '#fca5a5',
+        fontSize: '0.72rem',
+        fontWeight: 700
+      }}
+      title={fingerprint ? `Acoustic Audio Signature: ${fingerprint}` : 'Robocall Soundboard Anomaly'}
+    >
+      <span>🤖 Robocall Bot</span>
+      <span style={{ opacity: 0.8, fontSize: '0.65rem', fontFamily: 'var(--font-mono)' }}>
+        {cadenceScore}% synth
+      </span>
+    </span>
+  );
+};
