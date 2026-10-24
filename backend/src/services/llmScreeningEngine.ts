@@ -3,6 +3,8 @@ import { IncomingCallPayload, ScreeningResult, RiskLevel, CallerCategory, Screen
 import { FastRulesEngine } from './fastRulesEngine.js';
 import { inspectCallerUtterance } from './promptInjectionDefense.js';
 import { evaluateStirShaken } from './stirShakenService.js';
+import { EmergencySafeWordEngine } from './emergencySafeWordEngine.js';
+import { AcousticBotDetector } from './acousticBotDetector.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class LLMScreeningEngine {
@@ -11,9 +13,16 @@ export class LLMScreeningEngine {
    */
   public static async screenCall(payload: IncomingCallPayload): Promise<ScreeningResult> {
     const startTime = Date.now();
-
-    // 0. Stage 0: Security & Carrier Cryptographic Verification
     const rawTranscript = payload.simulatedAudioTranscript || payload.callerIntent || '';
+
+    // 0. Emergency Safe-Word / VIP Family Distress Override (<1ms)
+    const emergencyMatch = EmergencySafeWordEngine.evaluate(payload, startTime);
+    if (emergencyMatch) {
+      return emergencyMatch;
+    }
+
+    // Acoustic bot telemetry analysis
+    const acousticTelemetry = AcousticBotDetector.analyzeAcousticTelemetry(rawTranscript);
     const injectionCheck = inspectCallerUtterance(rawTranscript);
     if (injectionCheck.isInjectionAttempt) {
       return {
@@ -79,19 +88,33 @@ export class LLMScreeningEngine {
     }
 
     // 2. Stage 2: Cloud LLM Analysis with Strict Timeout Budget
+    let finalResult: ScreeningResult;
     try {
       const llmPromise = this.performLLMAnalysis(payload, startTime);
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('LLM_TIMEOUT_DEADLINE_EXCEEDED')), config.llmTimeoutMs);
       });
 
-      const result = await Promise.race([llmPromise, timeoutPromise]);
-      return result;
+      finalResult = await Promise.race([llmPromise, timeoutPromise]);
     } catch (error: any) {
       const reason = error.message === 'LLM_TIMEOUT_DEADLINE_EXCEEDED' ? 'LLM 2.2s Deadline Exceeded' : `LLM Error: ${error.message || 'Unknown'}`;
       // 3. Stage 3: Immediate Deterministic Safety Fallback
-      return FastRulesEngine.generateSafetyFallback(payload, startTime, reason);
+      finalResult = FastRulesEngine.generateSafetyFallback(payload, startTime, reason);
     }
+
+    // Attach acoustic bot telemetry to final result metadata
+    if (finalResult && acousticTelemetry) {
+      finalResult.metadata = {
+        ...finalResult.metadata,
+        acousticBotTelemetry: acousticTelemetry
+      };
+      if (acousticTelemetry.isRobocallBot && acousticTelemetry.soundboardConfidence >= 0.85 && finalResult.verdict !== 'ALLOW') {
+        finalResult.category = 'ROBOCALL';
+        finalResult.confidence = Math.max(finalResult.confidence, 0.95);
+      }
+    }
+
+    return finalResult;
   }
 
   /**
