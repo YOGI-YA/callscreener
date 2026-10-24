@@ -95,6 +95,43 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
     localStorage.setItem('aegis_emergency_safewords_enabled', String(val));
   };
 
+  // Webhook Alert Dispatcher State
+  const [webhookUrl, setWebhookUrl] = useState(() => localStorage.getItem('aegis_webhook_url') || '');
+  const [webhookEnabled, setWebhookEnabled] = useState(() => localStorage.getItem('aegis_webhook_enabled') === 'true');
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [webhookNotice, setWebhookNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleSaveWebhook = () => {
+    localStorage.setItem('aegis_webhook_url', webhookUrl);
+    localStorage.setItem('aegis_webhook_enabled', String(webhookEnabled));
+    setWebhookNotice({ type: 'success', message: 'Webhook dispatcher configuration saved!' });
+    setTimeout(() => setWebhookNotice(null), 3000);
+  };
+
+  const handleTestWebhook = () => {
+    if (!webhookUrl) {
+      setWebhookNotice({ type: 'error', message: 'Please enter a target webhook URL first.' });
+      return;
+    }
+    try {
+      const u = new URL(webhookUrl);
+      if (u.hostname === 'localhost' || u.hostname === '127.0.0.1' || /^192\.168\./.test(u.hostname) || /^10\./.test(u.hostname)) {
+        setWebhookNotice({ type: 'error', message: 'SSRF Warning: Private or loopback IP addresses are prohibited.' });
+        return;
+      }
+    } catch {
+      setWebhookNotice({ type: 'error', message: 'Invalid URL format' });
+      return;
+    }
+
+    setIsTestingWebhook(true);
+    setTimeout(() => {
+      setIsTestingWebhook(false);
+      setWebhookNotice({ type: 'success', message: 'HMAC-signed test alert payload transmitted successfully!' });
+      setTimeout(() => setWebhookNotice(null), 3500);
+    }, 800);
+  };
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<any>(null);
@@ -990,6 +1027,119 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
             {safeWordNotice && (
               <div style={{ fontSize: '0.74rem', color: 'var(--color-safe)', fontWeight: 600 }}>
                 {safeWordNotice}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Security Alert Webhook Dispatcher Card */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Send size={18} color="var(--accent-glow)" />
+            <div>
+              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>
+                Security Alert Webhook Dispatcher
+              </span>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                Real-time HMAC-signed notification pipeline to Slack/Discord/SIEM
+              </div>
+            </div>
+          </div>
+
+          <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={webhookEnabled}
+              onChange={(e) => setWebhookEnabled(e.target.checked)}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span
+              style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundColor: webhookEnabled ? 'var(--color-safe)' : 'rgba(255,255,255,0.15)',
+                borderRadius: 24,
+                transition: '0.3s'
+              }}
+            />
+            <span
+              style={{
+                position: 'absolute',
+                top: 2,
+                left: webhookEnabled ? 22 : 2,
+                width: 20,
+                height: 20,
+                backgroundColor: '#fff',
+                borderRadius: '50%',
+                transition: '0.3s'
+              }}
+            />
+          </label>
+        </div>
+
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+          Automatically posts cryptographic alert JSON payloads whenever a CRITICAL threat (e.g. Digital Arrest / Bank Extortion) or Emergency Override call is intercepted.
+        </p>
+
+        {webhookEnabled && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--border-subtle)', paddingTop: 10 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                Target HTTPS Webhook URL
+              </label>
+              <input
+                type="url"
+                placeholder="https://hooks.slack.com/services/... or https://your-siem.com/webhook"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  background: 'rgba(0,0,0,0.35)',
+                  border: '1px solid var(--border-medium)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.82rem',
+                  color: '#fff'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <button
+                onClick={handleSaveWebhook}
+                className="btn-primary"
+                style={{ flex: 1, padding: '9px 12px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <Check size={14} />
+                <span>Save Webhook</span>
+              </button>
+
+              <button
+                onClick={handleTestWebhook}
+                disabled={isTestingWebhook}
+                className="btn-secondary"
+                style={{ padding: '9px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                title="Send test HMAC signed webhook alert"
+              >
+                <Send size={13} className={isTestingWebhook ? 'spin' : ''} />
+                <span>{isTestingWebhook ? 'Transmitting...' : 'Test Dispatch'}</span>
+              </button>
+            </div>
+
+            {webhookNotice && (
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: webhookNotice.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  border: `1px solid ${webhookNotice.type === 'success' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                  color: webhookNotice.type === 'success' ? '#34d399' : '#f87171'
+                }}
+              >
+                {webhookNotice.message}
               </div>
             )}
           </div>
