@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Radio, Activity, RefreshCw, Bot, Terminal } from 'lucide-react';
+import { Shield, Radio, Activity, RefreshCw, Bot, Terminal, Maximize2, Smartphone } from 'lucide-react';
 import { TabId, Navbar } from './components/Navbar';
 import { DashboardTab } from './components/DashboardTab';
 import { DialerTab } from './components/DialerTab';
@@ -19,6 +19,7 @@ export const App: React.FC = () => {
   const [stats, setStats] = useState<CallScreeningStats | null>(null);
   const [logs, setLogs] = useState<ScreeningResult[]>([]);
   const [rules, setRules] = useState<ScreeningRule[]>([]);
+  const [isWideLayout, setIsWideLayout] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth >= 960);
   const [backendStatus, setBackendStatus] = useState<{ status: string; latencyMs: number }>({
     status: 'checking',
     latencyMs: 0
@@ -321,7 +322,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-viewport-container">
-      <div className="mobile-device-frame">
+      <div className={`mobile-device-frame ${isWideLayout ? 'wide-layout' : ''}`}>
         {/* App Header Bar */}
         <header className="app-header">
           <div className="brand-badge">
@@ -338,6 +339,27 @@ export const App: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => setIsWideLayout(!isWideLayout)}
+              title={isWideLayout ? "Switch to Phone Frame Preview" : "Switch to Expanded Dashboard"}
+              aria-label="Toggle Layout Mode"
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-full)',
+                background: isWideLayout ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                color: isWideLayout ? 'var(--accent-glow)' : 'var(--text-secondary)',
+                border: '1px solid ' + (isWideLayout ? 'rgba(99, 102, 241, 0.4)' : 'rgba(255, 255, 255, 0.1)'),
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              {isWideLayout ? <Smartphone size={13} /> : <Maximize2 size={13} />}
+              <span className="hide-on-mobile">{isWideLayout ? 'Compact' : 'Expand'}</span>
+            </button>
+
             <button
               onClick={() => setShowSandbox(!showSandbox)}
               title="Adversarial AI Call Sandbox"
