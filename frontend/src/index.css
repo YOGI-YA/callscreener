@@ -1141,3 +1141,29 @@ input, select, textarea {
   box-shadow: 0 0 14px rgba(99, 102, 241, 0.3);
 }
 
+/* Responsive Typography & Viewport Fit Across All Screen Sizes */
+@media (max-width: 480px) {
+  .app-header {
+    padding: 12px 14px 10px;
+  }
+  .brand-title {
+    font-size: 1.05rem;
+  }
+  .app-content {
+    padding: 12px;
+    padding-bottom: 78px;
+  }
+  .nav-tab-btn {
+    font-size: 0.68rem;
+  }
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+@media (min-width: 481px) {
+  .hide-on-desktop {
+    display: none !important;
+  }
+}
+
