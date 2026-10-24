@@ -5,11 +5,69 @@ import { v4 as uuidv4 } from 'uuid';
 export class WebhookDispatcher {
   private static webhooks: WebhookAlertConfig[] = [];
 
+  /**
+   * Validates target URL against SSRF attacks (private networks, cloud metadata, loopback)
+   */
+  public static validateSafeWebhookUrl(urlStr: string): { valid: boolean; reason?: string } {
+    try {
+      const parsed = new URL(urlStr);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        return { valid: false, reason: 'Invalid protocol: Only HTTP/HTTPS webhooks permitted' };
+      }
+
+      const hostname = parsed.hostname.toLowerCase();
+
+      // Loopback & local targets
+      if (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname === '0.0.0.0' ||
+        hostname === '::1' ||
+        hostname.endsWith('.local')
+      ) {
+        return { valid: false, reason: 'SSRF blocked: Loopback addresses prohibited' };
+      }
+
+      // Cloud metadata targets
+      if (
+        hostname === '169.254.169.254' ||
+        hostname.includes('metadata.google') ||
+        hostname.includes('instance-data')
+      ) {
+        return { valid: false, reason: 'SSRF blocked: Cloud metadata service target prohibited' };
+      }
+
+      // Private RFC 1918 IPv4
+      if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+        return { valid: false, reason: 'SSRF blocked: RFC 1918 10.0.0.0/8 private network prohibited' };
+      }
+      if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+        return { valid: false, reason: 'SSRF blocked: RFC 1918 192.168.0.0/16 private network prohibited' };
+      }
+      const match172 = /^172\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/.exec(hostname);
+      if (match172) {
+        const octet2 = parseInt(match172[1], 10);
+        if (octet2 >= 16 && octet2 <= 31) {
+          return { valid: false, reason: 'SSRF blocked: RFC 1918 172.16.0.0/12 private network prohibited' };
+        }
+      }
+
+      return { valid: true };
+    } catch {
+      return { valid: false, reason: 'Malformed webhook URL format' };
+    }
+  }
+
   public static getWebhooks(): WebhookAlertConfig[] {
     return [...this.webhooks];
   }
 
   public static registerWebhook(config: Omit<WebhookAlertConfig, 'id'>): WebhookAlertConfig {
+    const check = this.validateSafeWebhookUrl(config.url);
+    if (!check.valid) {
+      throw new Error(`SSRF_PROTECTION_ERROR: ${check.reason}`);
+    }
+
     const item: WebhookAlertConfig = {
       ...config,
       id: `wh-${uuidv4().slice(0, 8)}`,
