@@ -318,6 +318,59 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         </div>
       </div>
 
+      {/* ────────────────────────────────────────────────────────────────
+          LIVE AUDIO TELEMETRY & CALLER UPLINK MONITOR CARD
+         ──────────────────────────────────────────────────────────────── */}
+      <div className="glass-card grid-col-full" data-testid="dashboard-audio-telemetry-card" style={{ padding: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Radio size={18} color="var(--accent-cyan)" />
+            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>
+              Telephony Audio Uplink &amp; Crypto Shield
+            </span>
+          </div>
+          <span
+            style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              padding: '3px 10px',
+              borderRadius: 20,
+              background: 'rgba(56, 189, 248, 0.15)',
+              color: 'var(--accent-cyan)',
+              border: '1px solid rgba(56, 189, 248, 0.3)'
+            }}
+          >
+            ● TELECOM UPLINK ONLINE
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '10px', borderRadius: 8 }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Audio Uplink Target</div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#38bdf8', marginTop: 2 }}>-16 dBFS (AGC)</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>Normalized Telecom Out</div>
+          </div>
+
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '10px', borderRadius: 8 }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Comfort Noise</div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#a78bfa', marginTop: 2 }}>RFC 3389 / Pink</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>Dead-Air Squelch Guard</div>
+          </div>
+
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '10px', borderRadius: 8 }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Cryptographic Seal</div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-safe)', marginTop: 2 }}>AES-256-GCM</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>SHA-256 Chained</div>
+          </div>
+
+          <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '10px', borderRadius: 8 }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Replay Prevention</div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#34d399', marginTop: 2 }}>Zero Nonce Replay</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>Sliding TTL Window</div>
+          </div>
+        </div>
+      </div>
+
       {/* Recent Screened Activity */}
       <div className="grid-col-full">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
