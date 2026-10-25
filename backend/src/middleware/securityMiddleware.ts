@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import { NonceReplayStore } from '../services/nonceReplayStore.js';
 
 const MAX_TIMESTAMP_DRIFT_MS = 5 * 60 * 1000; // 5 minutes tolerance
 
@@ -41,6 +42,19 @@ export function preventReplayAttacks(req: Request, res: Response, next: NextFunc
         });
         return;
       }
+    }
+  }
+
+  const nonceHeader = req.headers['x-aegis-nonce'] as string;
+  if (nonceHeader) {
+    const nonceCheck = NonceReplayStore.consumeNonce(nonceHeader);
+    if (!nonceCheck.valid) {
+      res.status(409).json({
+        success: false,
+        error: 'NONCE_REPLAY_DETECTED',
+        message: 'This cryptographic request nonce has already been consumed or is invalid',
+      });
+      return;
     }
   }
 
