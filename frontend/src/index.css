@@ -49,6 +49,35 @@
   --radius-full: 9999px;
 }
 
+/* OLED True Black Battery-Saving Mode (0% pixel power on AMOLED mobile displays) */
+[data-theme="oled-black"],
+body.theme-oled-black {
+  --bg-primary: #000000;
+  --bg-surface: #000000;
+  --bg-card: rgba(8, 8, 8, 0.98);
+  --bg-card-hover: rgba(18, 18, 18, 1);
+  --bg-glass: rgba(0, 0, 0, 0.98);
+  --bg-dock: rgba(5, 5, 5, 0.98);
+  --border-subtle: rgba(255, 255, 255, 0.14);
+  --border-medium: rgba(255, 255, 255, 0.22);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.9);
+}
+
+/* Cyberpunk Neon High-Contrast Palette */
+[data-theme="cyberpunk-neon"],
+body.theme-cyberpunk-neon {
+  --bg-primary: #030014;
+  --bg-surface: #070024;
+  --bg-card: rgba(15, 3, 40, 0.85);
+  --bg-card-hover: rgba(28, 6, 75, 0.92);
+  --accent-primary: #00f0ff;
+  --accent-glow: #ff007f;
+  --accent-cyan: #00ffaa;
+  --border-glow: rgba(0, 240, 255, 0.6);
+  --shadow-glow: 0 0 32px rgba(0, 240, 255, 0.45);
+}
+
+
 * {
   margin: 0;
   padding: 0;
