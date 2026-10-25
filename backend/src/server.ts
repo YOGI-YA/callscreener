@@ -5,6 +5,7 @@ import { logRouter } from './routes/logRoutes.js';
 import { healthRouter } from './routes/healthRoutes.js';
 import { recordingRouter } from './routes/recordingRoutes.js';
 import { honeypotRouter } from './routes/honeypotRoutes.js';
+import { telecomAudioRouter } from './routes/telecomAudioRoutes.js';
 import { applySecurityHeaders, preventReplayAttacks } from './middleware/securityMiddleware.js';
 import { requireApiKeyAuth } from './middleware/authMiddleware.js';
 
@@ -39,6 +40,7 @@ export function createServer(): Express {
   // Mount API Routers
   app.use('/api/health', healthRouter);
   app.use('/api', screeningRouter);
+  app.use('/api', telecomAudioRouter);
   app.use('/api/logs', logRouter);
   app.use('/api/recordings', recordingRouter);
   app.use('/api/honeypot', honeypotRouter);
