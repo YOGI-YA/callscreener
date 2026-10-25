@@ -23,7 +23,7 @@ export interface UplinkSynthOptions {
 }
 
 export class OutgoingAudioSynthesizer {
-  private static defaultSampleRate = 8000;
+  private static defaultSampleRate: 8000 | 16000 = 8000;
   private static frameDurationMs = 20; // 20ms standard telecom frame
 
   /**
@@ -55,7 +55,7 @@ export class OutgoingAudioSynthesizer {
     text: string,
     options: UplinkSynthOptions = {}
   ): UplinkAudioFrame[] {
-    const sampleRate = options.sampleRate || this.defaultSampleRate;
+    const sampleRate: 8000 | 16000 = options.sampleRate || this.defaultSampleRate;
     const baseFreq = options.baseFrequencyHz || 220; // Natural voice pitch
     const volume = Math.min(Math.max(options.volumeGain ?? 0.75, 0.0), 1.0);
     const speed = Math.min(Math.max(options.speakingRate ?? 1.0, 0.5), 2.0);
