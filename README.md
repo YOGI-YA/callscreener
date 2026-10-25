@@ -126,6 +126,24 @@ AegisCall AI is an enterprise, industry-grade Android call-screening and robocal
 - Variable speed controls (`1x`, `1.25x`, `1.5x`, `2x`) with 5-second quick jumps.
 - Instant PII unmask/re-mask toggle directly on audio playback cards.
 
+### 11. Telephony Uplink Audio Architecture (Speech to Remote Caller)
+- **Outgoing Audio Synthesizer**: Produces ITU-T G.711 / AMR-WB compatible 20ms linear PCM audio frames (`STREAM_VOICE_CALL`) injected straight into cellular uplink.
+- **Dynamic Gain Control (AGC) & Peak Limiter**: Broadcast standard -16 dBFS normalizer prevents earpiece distortion or clipping for the caller.
+- **RFC 3389 Comfort Noise Generator (CNG)**: Fills AI thinking latency gaps with subtle -55dB pink noise to avoid carrier dead-air drops or squelch clicks.
+- **Automated DTMF Dialing**: Synthesizes standard ITU-T Q.23 dual tones for navigating IVR phone trees and pressing automated opt-out keys.
+
+### 12. Zero-Trust Cryptographic Audit Chain & Replay Defense
+- **Tamper-Evident Hash Chain**: Each call log is linked to its predecessor via SHA-256 hash pointers (Merkle block structure), proving zero alteration of transcripts or verdicts.
+- **Sliding-Window Nonce Store**: Cryptographic nonces (`x-aegis-nonce`) prevent replay attacks on telecom authorization endpoints.
+- **AES-256-GCM Field Encryption**: Sensitive forensic logs are encrypted at rest with authenticated GCM tags.
+- **Shannon Entropy & Homoglyph Normalization**: Blocks high-entropy cipher smuggling and Cyrillic/Greek character spoofing in caller utterances.
+
+### 13. Mobile Platform & Battery Performance Optimization
+- **Circular RingBuffer & Audio Pool**: Zero-allocation circular memory buffers eliminate GC pauses during 50fps real-time audio packet streaming.
+- **Battery-Safe WakeLock Manager**: Android partial wake-locks feature strict 180s watchdog auto-release timeouts to prevent battery drain.
+- **Resilient WebSocket Client**: Reconnects with exponential backoff, decorrelated jitter, and offline packet queue flushing during cell tower handoffs.
+- **OLED True Black Theme**: True `#000000` AMOLED display mode delivers 0% pixel power consumption on mobile screens.
+
 ---
 
 ## 📱 Cloud APK Build & Download Instructions
