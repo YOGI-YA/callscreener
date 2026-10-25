@@ -2,7 +2,7 @@
  * PromptInjectionDefense Service
  * ──────────────────────────────
  * Industry-grade zero-trust defense layer against adversarial prompt injection,
- * LLM jailbreaking, and telephony audio social-engineering exploits.
+ * LLM jailbreaking, high-entropy cipher smuggling, and telephony audio social-engineering exploits.
  */
 
 const INJECTION_PATTERNS = [
@@ -36,12 +36,52 @@ const INJECTION_PATTERNS = [
   /\b(act\s+as\s+an\s+unfiltered|behave\s+without\s+any\s+safety\s+filter)\b/i
 ];
 
+// Common Cyrillic and Greek homoglyphs mapped to ASCII equivalents
+const HOMOGLYPH_MAP: Record<string, string> = {
+  '\u0430': 'a', '\u0435': 'e', '\u043E': 'o', '\u0440': 'p', '\u0441': 'c', '\u0443': 'y', '\u0445': 'x',
+  '\u0410': 'A', '\u0415': 'E', '\u041E': 'O', '\u0420': 'P', '\u0421': 'C', '\u0422': 'T', '\u0425': 'X',
+  '\u03BF': 'o', '\u03B1': 'a', '\u03BD': 'v'
+};
+
 export interface DefenseInspectionResult {
   isInjectionAttempt: boolean;
   sanitizedText: string;
   threatScoreBoost: number;
   threatLevel: 'HIGH' | 'MEDIUM' | 'SAFE';
   rationale?: string;
+  shannonEntropy?: number;
+  isHighEntropyCipher?: boolean;
+}
+
+/**
+ * Calculates Shannon entropy (bits per character) to detect high-entropy encoded payloads
+ */
+export function calculateShannonEntropy(text: string): number {
+  if (!text || text.length === 0) return 0;
+  const frequencies = new Map<string, number>();
+  for (const char of text) {
+    frequencies.set(char, (frequencies.get(char) || 0) + 1);
+  }
+  let entropy = 0;
+  const len = text.length;
+  for (const count of frequencies.values()) {
+    const p = count / len;
+    entropy -= p * Math.log2(p);
+  }
+  return Math.round(entropy * 100) / 100;
+}
+
+/**
+ * Normalizes unicode homoglyphs to plain latin characters
+ */
+export function normalizeHomoglyphs(text: string): string {
+  let normalized = text;
+  for (const [homoglyph, replacement] of Object.entries(HOMOGLYPH_MAP)) {
+    if (normalized.includes(homoglyph)) {
+      normalized = normalized.split(homoglyph).join(replacement);
+    }
+  }
+  return normalized;
 }
 
 export function inspectCallerUtterance(rawText: string): DefenseInspectionResult {
@@ -55,7 +95,8 @@ export function inspectCallerUtterance(rawText: string): DefenseInspectionResult
   }
 
   // Strip zero-width characters and invisible unicode homoglyphs used for evasion
-  const normalizedText = rawText.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  let normalizedText = rawText.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  normalizedText = normalizeHomoglyphs(normalizedText);
 
   let detected = false;
   let reason: string | undefined;
@@ -88,11 +129,38 @@ export function inspectCallerUtterance(rawText: string): DefenseInspectionResult
     }
   }
 
+  // Shannon entropy check for encrypted/obfuscated cipher strings (>4.8 bits/char in words >30 chars)
+  const entropy = calculateShannonEntropy(normalizedText);
+  let isHighEntropy = false;
+  if (normalizedText.length > 35 && entropy > 4.75 && !detected) {
+    isHighEntropy = true;
+    detected = true;
+    reason = `High-entropy cipher payload detected (${entropy} bits/char)`;
+    sanitized = '[BLOCKED_HIGH_ENTROPY_PAYLOAD]';
+  }
+
   return {
     isInjectionAttempt: detected,
     sanitizedText: sanitized,
     threatScoreBoost: detected ? 45 : 0,
     threatLevel: detected ? 'HIGH' : 'SAFE',
     rationale: reason,
+    shannonEntropy: entropy,
+    isHighEntropyCipher: isHighEntropy
   };
+}
+
+/**
+ * Canary Token Sentinel: Creates and validates runtime canary markers
+ * to detect any inadvertent prompt leakage in outgoing AI responses.
+ */
+export class CanarySentinel {
+  public static generateCanary(): string {
+    return `AEGIS_CANARY_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  public static isCanaryLeaked(aiOutput: string, activeCanaries: string[]): boolean {
+    if (!aiOutput || activeCanaries.length === 0) return false;
+    return activeCanaries.some(canary => aiOutput.includes(canary));
+  }
 }
