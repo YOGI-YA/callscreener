@@ -1,6 +1,6 @@
 {
   "name": "call-screener-backend",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Backend service for AI-powered Android Call Screener",
   "main": "dist/index.js",
   "scripts": {
