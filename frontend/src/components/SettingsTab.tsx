@@ -132,6 +132,29 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
     }, 800);
   };
 
+  // Outgoing Audio & Caller Acoustics Settings State
+  const [cngSpectrum, setCngSpectrum] = useState<'pink' | 'room_acoustic' | 'off'>(() => {
+    return (localStorage.getItem('aegis_cng_spectrum') as any) || 'pink';
+  });
+  const [agcLevel, setAgcLevel] = useState<string>(() => {
+    return localStorage.getItem('aegis_agc_level') || '-16';
+  });
+  const [themePreference, setThemePreference] = useState<string>(() => {
+    return localStorage.getItem('aegis_theme_mode') || 'default';
+  });
+
+  const handleThemeChange = (newTheme: string) => {
+    setThemePreference(newTheme);
+    localStorage.setItem('aegis_theme_mode', newTheme);
+    if (newTheme === 'oled-black') {
+      document.body.setAttribute('data-theme', 'oled-black');
+    } else if (newTheme === 'cyberpunk-neon') {
+      document.body.setAttribute('data-theme', 'cyberpunk-neon');
+    } else {
+      document.body.removeAttribute('data-theme');
+    }
+  };
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<any>(null);
@@ -524,6 +547,136 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* ────────────────────────────────────────────────────────────────
+          OUTGOING AUDIO & CALLER ACOUSTIC OPTIMIZATION CARD
+         ──────────────────────────────────────────────────────────────── */}
+      <div className="glass-card" data-testid="settings-outgoing-audio-card" style={{ display: 'flex', flexDirection: 'column', gap: 12, border: '1px solid var(--border-glow)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: '1.1rem' }}>🔊</span>
+            <span style={{ fontSize: '0.92rem', fontWeight: 700 }}>Caller Audio Uplink &amp; Acoustics</span>
+          </div>
+          <span style={{ fontSize: '0.72rem', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontWeight: 700 }}>
+            Telecom AGC Active
+          </span>
+        </div>
+
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+          Control sound quality transmitted to the remote caller (uplink), prevent cellular squelch with comfort noise, and manage mobile battery display themes.
+        </p>
+
+        {/* Comfort Noise Selector */}
+        <div>
+          <label style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+            Comfort Noise Generator (CNG) during AI Thinking:
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {[
+              { id: 'pink', label: '🌸 Pink Noise (-55dB)', sub: 'RFC 3389 (Best)' },
+              { id: 'room_acoustic', label: '🏠 Room Handset', sub: 'Warm Ambient' },
+              { id: 'off', label: '🔇 Total Digital Mute', sub: 'May Cause Line Drops' }
+            ].map((c) => (
+              <button
+                key={c.id}
+                data-testid={`cng-option-${c.id}`}
+                onClick={() => {
+                  setCngSpectrum(c.id as any);
+                  localStorage.setItem('aegis_cng_spectrum', c.id);
+                }}
+                className="btn-secondary"
+                style={{
+                  padding: '8px 6px',
+                  flexDirection: 'column',
+                  gap: 2,
+                  borderColor: cngSpectrum === c.id ? 'var(--accent-cyan)' : 'var(--border-subtle)',
+                  background: cngSpectrum === c.id ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.04)'
+                }}
+              >
+                <div style={{ fontSize: '0.76rem', fontWeight: 700, color: cngSpectrum === c.id ? '#38bdf8' : '#fff' }}>
+                  {c.label}
+                </div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                  {c.sub}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* AGC Level Selector */}
+        <div>
+          <label style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+            Uplink Audio Normalizer (AGC Target):
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {[
+              { id: '-16', label: 'Standard (-16 dBFS)', desc: 'Broadcast Telecom' },
+              { id: '-14', label: 'Loud (-14 dBFS)', desc: 'Noisy Environments' },
+              { id: '-18', label: 'Quiet (-18 dBFS)', desc: 'Subtle Earpiece' }
+            ].map((lvl) => (
+              <button
+                key={lvl.id}
+                data-testid={`agc-option-${lvl.id}`}
+                onClick={() => {
+                  setAgcLevel(lvl.id);
+                  localStorage.setItem('aegis_agc_level', lvl.id);
+                }}
+                className="btn-secondary"
+                style={{
+                  padding: '8px 6px',
+                  flexDirection: 'column',
+                  gap: 2,
+                  borderColor: agcLevel === lvl.id ? 'var(--accent-glow)' : 'var(--border-subtle)',
+                  background: agcLevel === lvl.id ? 'rgba(99, 102, 241, 0.18)' : 'rgba(255, 255, 255, 0.04)'
+                }}
+              >
+                <div style={{ fontSize: '0.76rem', fontWeight: 700, color: agcLevel === lvl.id ? '#fff' : 'var(--text-primary)' }}>
+                  {lvl.label}
+                </div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                  {lvl.desc}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* OLED Battery Theme Selector */}
+        <div>
+          <label style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+            Mobile Display Theme &amp; Battery Optimization:
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {[
+              { id: 'default', label: '🌌 Obsidian Cyber', sub: 'Standard Palette' },
+              { id: 'oled-black', label: '🖤 OLED True Black', sub: '0% Battery on AMOLED' },
+              { id: 'cyberpunk-neon', label: '⚡ Cyberpunk Neon', sub: 'High Contrast' }
+            ].map((theme) => (
+              <button
+                key={theme.id}
+                data-testid={`theme-option-${theme.id}`}
+                onClick={() => handleThemeChange(theme.id)}
+                className="btn-secondary"
+                style={{
+                  padding: '8px 6px',
+                  flexDirection: 'column',
+                  gap: 2,
+                  borderColor: themePreference === theme.id ? '#10b981' : 'var(--border-subtle)',
+                  background: themePreference === theme.id ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.04)'
+                }}
+              >
+                <div style={{ fontSize: '0.76rem', fontWeight: 700, color: themePreference === theme.id ? '#34d399' : '#fff' }}>
+                  {theme.label}
+                </div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                  {theme.sub}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
