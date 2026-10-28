@@ -13,6 +13,8 @@ class MainActivity : BridgeActivity() {
         registerPlugin(CallScreeningPlugin::class.java)
         super.onCreate(savedInstanceState)
         configureWindowForInCall()
+        com.aegiscall.screener.telecom.FastLocalRulesEngine.initialize(this)
+        com.aegiscall.screener.telecom.WatchdogScheduler.scheduleWatchdog(this)
     }
 
     override fun onNewIntent(intent: Intent) {

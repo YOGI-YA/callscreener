@@ -19,6 +19,19 @@ object FastLocalRulesEngine {
     private val memoryCache = android.util.LruCache<String, ScreeningData>(128)
 
     /**
+     * Initializes and pre-warms regex patterns and caches for boot resilience
+     */
+    fun initialize(context: Context) {
+        try {
+            // Touch regexes to pre-warm JIT
+            emergencyRegex.matches("911")
+            tollFraudRegex.matches("+19001234567")
+            satelliteFraudRegex.matches("+8811234567")
+            spoofedZerosRegex.matches("0000000000")
+        } catch (_: Exception) {}
+    }
+
+    /**
      * Executes instant local regex & heuristic evaluation (<2ms)
      */
     fun evaluate(context: Context, rawPhoneNumber: String?): ScreeningData? {
