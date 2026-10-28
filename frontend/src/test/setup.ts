@@ -83,5 +83,8 @@ if (typeof window !== 'undefined') {
   if (!window.URL.revokeObjectURL) {
     window.URL.revokeObjectURL = vi.fn();
   }
+  if (typeof HTMLAnchorElement !== 'undefined') {
+    HTMLAnchorElement.prototype.click = vi.fn();
+  }
 }
 
