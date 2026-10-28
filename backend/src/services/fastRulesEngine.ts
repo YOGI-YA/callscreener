@@ -1,5 +1,7 @@
 import { IncomingCallPayload, ScreeningResult, ScreeningRule } from '../types/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import path from 'path';
 
 export class FastRulesEngine {
   private static defaultRules: ScreeningRule[] = [
@@ -76,8 +78,39 @@ export class FastRulesEngine {
   ];
 
   private static customRules: ScreeningRule[] = [];
+  private static storageFile = path.resolve(process.cwd(), 'data', 'rules.json');
+  private static isInitialized = false;
+
+  private static ensureLoaded(): void {
+    if (this.isInitialized) return;
+    this.isInitialized = true;
+    try {
+      if (fs.existsSync(this.storageFile)) {
+        const raw = fs.readFileSync(this.storageFile, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          this.customRules = parsed;
+        }
+      }
+    } catch (e: any) {
+      console.warn('Could not read custom rules from disk:', e.message);
+    }
+  }
+
+  private static persistToDisk(): void {
+    try {
+      const dir = path.dirname(this.storageFile);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(this.storageFile, JSON.stringify(this.customRules, null, 2), 'utf-8');
+    } catch (e: any) {
+      console.warn('Could not persist custom rules to disk:', e.message);
+    }
+  }
 
   public static getRules(): ScreeningRule[] {
+    this.ensureLoaded();
     return [...this.defaultRules, ...this.customRules];
   }
 
@@ -108,6 +141,7 @@ export class FastRulesEngine {
   }
 
   public static addRule(rule: Omit<ScreeningRule, 'id' | 'createdAt'>): ScreeningRule {
+    this.ensureLoaded();
     const check = this.validateRulePattern(rule.pattern);
     if (!check.valid) {
       throw new Error(`INVALID_RULE_PATTERN: ${check.error}`);
@@ -119,13 +153,17 @@ export class FastRulesEngine {
       createdAt: new Date().toISOString()
     };
     this.customRules.push(newRule);
+    this.persistToDisk();
     return newRule;
   }
 
   public static removeRule(id: string): boolean {
+    this.ensureLoaded();
     const initialLen = this.customRules.length;
     this.customRules = this.customRules.filter((r) => r.id !== id);
-    return this.customRules.length !== initialLen;
+    const deleted = this.customRules.length !== initialLen;
+    if (deleted) this.persistToDisk();
+    return deleted;
   }
 
   /**

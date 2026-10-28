@@ -1,13 +1,51 @@
 import { ScreeningResult, CallScreeningStats } from '../types/index.js';
 import { EmailService } from './emailService.js';
 import { maskSensitiveText } from './sensitiveDataMasker.js';
+import fs from 'fs';
+import path from 'path';
 
 export class CallLogStorage {
   private static logs: ScreeningResult[] = [];
   private static logIndex = new Map<string, ScreeningResult>();
+  private static storageFile = path.resolve(process.cwd(), 'data', 'call_logs.json');
+
+  private static persistToDisk(): void {
+    try {
+      const dir = path.dirname(this.storageFile);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(this.storageFile, JSON.stringify(this.logs, null, 2), 'utf-8');
+    } catch (e: any) {
+      console.warn('Could not persist call logs to disk:', e.message);
+    }
+  }
+
+  private static loadFromDisk(): boolean {
+    try {
+      if (fs.existsSync(this.storageFile)) {
+        const raw = fs.readFileSync(this.storageFile, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.logs = parsed;
+          this.logIndex.clear();
+          for (const item of this.logs) {
+            this.logIndex.set(item.id, item);
+          }
+          return true;
+        }
+      }
+    } catch (e: any) {
+      console.warn('Could not load call logs from disk:', e.message);
+    }
+    return false;
+  }
 
   public static initializeSeedData() {
     if (this.logs.length === 0) {
+      if (this.loadFromDisk()) {
+        return;
+      }
       const now = Date.now();
       this.logs = [
         {
@@ -164,6 +202,8 @@ export class CallLogStorage {
     } catch (e: any) {
       console.warn('Could not trigger email auto-forward:', e.message);
     }
+
+    this.persistToDisk();
   }
 
   public static getLogs(query?: { search?: string; verdict?: string; category?: string; riskLevel?: string; limit?: number }): ScreeningResult[] {
@@ -208,12 +248,15 @@ export class CallLogStorage {
     this.logIndex.delete(id);
     const initialLen = this.logs.length;
     this.logs = this.logs.filter((l) => l.id !== id);
-    return this.logs.length !== initialLen;
+    const deleted = this.logs.length !== initialLen;
+    if (deleted) this.persistToDisk();
+    return deleted;
   }
 
   public static clearAll(): void {
     this.logs = [];
     this.logIndex.clear();
+    this.persistToDisk();
   }
 
   public static getStats(): CallScreeningStats {
