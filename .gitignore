@@ -48,3 +48,7 @@ android/.idea/
 # Capacitor
 www/
 capacitor.config.json.bak
+
+# Runtime persistent data and test recordings
+backend/data/
+data/
