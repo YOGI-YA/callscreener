@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Settings, ShieldCheck, Server, Smartphone, ExternalLink, HelpCircle,
   Check, RefreshCw, AlertTriangle, Phone, Mic, Play, Trash2, Mail, Send, CheckCircle2,
-  Key, Plus
+  Key, Plus, Zap, BatteryCharging
 } from 'lucide-react';
 import { CapacitorService } from '../services/capacitorService';
 import { ApiService } from '../services/api';
@@ -19,6 +19,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
   const [isRequestingRole, setIsRequestingRole] = useState(false);
   const [roleMessage, setRoleMessage] = useState<string | null>(null);
   const [dialerGranted, setDialerGranted] = useState(false);
+  const [batteryIgnored, setBatteryIgnored] = useState(false);
+  const [longevityNotice, setLongevityNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    CapacitorService.checkBatteryOptimizationStatus().then((res) => {
+      setBatteryIgnored(res.isIgnoringBatteryOptimizations);
+    });
+  }, []);
 
   // Personal Voicemail & Custom Greeting State
   const [screeningMode, setScreeningModeState] = useState<'AI_ASSISTANT' | 'PERSONAL_VOICEMAIL'>('AI_ASSISTANT');
@@ -321,6 +329,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
     onRefreshRole();
   };
 
+  const handleRequestBatteryExemption = async () => {
+    const res = await CapacitorService.requestIgnoreBatteryOptimizations();
+    setLongevityNotice(res.message || 'Battery optimization exemption requested');
+    const updated = await CapacitorService.checkBatteryOptimizationStatus();
+    setBatteryIgnored(updated.isIgnoringBatteryOptimizations);
+    setTimeout(() => setLongevityNotice(null), 3500);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Settings Header */}
@@ -437,6 +453,47 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
             <span>Open Android Default Apps Settings</span>
           </button>
         </div>
+      </div>
+
+      {/* 24/7 Background Longevity & Battery Optimization Exemption Card */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 10, border: '1px solid var(--border-glow)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Zap size={18} color="#f59e0b" />
+            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>24/7 Longevity & Standby Protection</span>
+          </div>
+          <span
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              color: batteryIgnored ? 'var(--color-safe)' : '#f59e0b',
+              background: batteryIgnored ? 'var(--color-safe-bg)' : 'rgba(245, 158, 11, 0.15)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-full)'
+            }}
+          >
+            {batteryIgnored ? 'Protected (24/7 Active)' : 'Exemption Recommended'}
+          </span>
+        </div>
+
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+          <strong>Continuous Multi-Day Screening:</strong> Prevents Android OS from placing AegisCall into App Standby "Restricted" sleep after 48 hours of screen inactivity. Combined with the native BootReceiver and WatchdogScheduler, your incoming call screener runs indefinitely without stopping.
+        </p>
+
+        {longevityNotice && (
+          <div style={{ fontSize: '0.75rem', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: 8, borderRadius: 'var(--radius-sm)' }}>
+            {longevityNotice}
+          </div>
+        )}
+
+        <button
+          onClick={handleRequestBatteryExemption}
+          className="btn-secondary"
+          style={{ width: '100%', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          <BatteryCharging size={16} color="#f59e0b" />
+          <span>{batteryIgnored ? 'Re-verify Battery Whitelist' : 'Grant 24/7 Background Exemption'}</span>
+        </button>
       </div>
 
       {/* Screener Interaction Mode: Silent Word-by-Word vs Bot Voice */}

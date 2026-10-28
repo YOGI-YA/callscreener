@@ -127,6 +127,42 @@ export class CapacitorService {
     return false;
   }
 
+  // --- 24/7 BACKGROUND LONGEVITY & BATTERY OPTIMIZATION ---
+
+  public static async checkBatteryOptimizationStatus(): Promise<{ isIgnoringBatteryOptimizations: boolean; isLongTermProtected: boolean }> {
+    if (!this.isNative()) {
+      const mockIgnored = localStorage.getItem('mock_battery_optimization_ignored') === 'true';
+      return { isIgnoringBatteryOptimizations: mockIgnored, isLongTermProtected: mockIgnored };
+    }
+
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.checkBatteryOptimizationStatus) {
+        return await plugin.checkBatteryOptimizationStatus();
+      }
+    } catch (e) {
+      console.warn('checkBatteryOptimizationStatus failed:', e);
+    }
+    return { isIgnoringBatteryOptimizations: false, isLongTermProtected: false };
+  }
+
+  public static async requestIgnoreBatteryOptimizations(): Promise<{ success: boolean; message?: string }> {
+    if (!this.isNative()) {
+      localStorage.setItem('mock_battery_optimization_ignored', 'true');
+      return { success: true, message: 'Simulated: Battery optimization ignored for continuous 24/7 operation' };
+    }
+
+    try {
+      const plugin = (window as any).Capacitor?.Plugins?.CallScreeningBridge;
+      if (plugin?.requestIgnoreBatteryOptimizations) {
+        return await plugin.requestIgnoreBatteryOptimizations();
+      }
+    } catch (e: any) {
+      return { success: false, message: e.message || 'Failed to request battery exemption' };
+    }
+    return { success: false, message: 'CallScreeningBridge plugin not initialized' };
+  }
+
   // --- DEFAULT PHONE APP (DIALER) ROLE ---
 
   public static async checkDialerRole(): Promise<{ isDefaultDialer: boolean }> {
