@@ -5,6 +5,7 @@ import { FastRulesEngine } from '../services/fastRulesEngine.js';
 import { CallLogStorage } from '../services/callLogStorage.js';
 import { IncomingCallPayload } from '../types/index.js';
 import { screeningRateLimiter } from '../middleware/rateLimiter.js';
+import { MediaRetentionManager } from '../services/mediaRetentionManager.js';
 
 export const screeningRouter = Router();
 
@@ -232,4 +233,28 @@ screeningRouter.post('/simulate-scenario', async (req: Request, res: Response): 
     });
   }
 });
+
+/**
+ * GET /api/maintenance/retention
+ * Fetches media retention policy
+ */
+screeningRouter.get('/maintenance/retention', (_req: Request, res: Response): void => {
+  res.json({
+    success: true,
+    policy: MediaRetentionManager.getPolicy()
+  });
+});
+
+/**
+ * POST /api/maintenance/retention/run
+ * Manually executes media retention cleanup
+ */
+screeningRouter.post('/maintenance/retention/run', (_req: Request, res: Response): void => {
+  const result = MediaRetentionManager.runCleanup();
+  res.json({
+    success: true,
+    result
+  });
+});
+
 
