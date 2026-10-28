@@ -23,6 +23,9 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:allowBackup="true"
@@ -109,6 +112,28 @@
                 <action android:name="com.aegiscall.screener.ACTION_SCREEN_CALL" />
                 <action android:name="com.aegiscall.screener.ACTION_TOGGLE_MUTE" />
                 <action android:name="com.aegiscall.screener.ACTION_TOGGLE_SPEAKER" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Device Reboot & Package Update Longevity Receiver -->
+        <receiver
+            android:name=".telecom.AegisBootReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Longevity Watchdog Periodic Pulse Receiver -->
+        <receiver
+            android:name=".telecom.LongevityWatchdogReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.aegiscall.screener.ACTION_WATCHDOG_HEARTBEAT" />
             </intent-filter>
         </receiver>
 
