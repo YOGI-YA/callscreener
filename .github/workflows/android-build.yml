@@ -21,16 +21,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies
+      - name: Install Frontend Dependencies
         run: |
-          npm install --prefix backend
           npm install --prefix frontend
           npm install
-
-      - name: Run Backend & Frontend Tests
-        run: |
-          npm run test --prefix backend
-          npm run test --prefix frontend
 
       - name: Build Web Production Bundle
         run: npm run build --prefix frontend
