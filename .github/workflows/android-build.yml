@@ -20,18 +20,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
-      - name: Install Monorepo Dependencies
-        run: npm install
+      - name: Install Dependencies
+        run: |
+          npm install --prefix backend
+          npm install --prefix frontend
+          npm install
 
       - name: Run Backend & Frontend Tests
         run: |
-          npm run test --workspace=backend
-          npm run test --workspace=frontend
+          npm run test --prefix backend
+          npm run test --prefix frontend
 
       - name: Build Web Production Bundle
-        run: npm run build --workspace=frontend
+        run: npm run build --prefix frontend
 
       - name: Copy Web Assets to Android Assets
         run: |
@@ -46,7 +48,10 @@ jobs:
 
       - name: Setup Android SDK Licenses
         run: |
-          yes | sdkmanager --licenses || true
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+          if command -v sdkmanager &> /dev/null; then
+            yes | sdkmanager --licenses || true
+          fi
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4

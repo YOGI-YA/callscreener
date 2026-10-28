@@ -8,17 +8,17 @@
     "frontend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
-    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
-    "test": "npm run test --workspace=backend && npm run test --workspace=frontend",
-    "lint": "npm run lint --workspace=backend && npm run lint --workspace=frontend",
-    "backend:dev": "npm run dev --workspace=backend",
-    "backend:build": "npm run build --workspace=backend",
-    "backend:test": "npm run test --workspace=backend",
-    "frontend:dev": "npm run dev --workspace=frontend",
-    "frontend:build": "npm run build --workspace=frontend",
-    "frontend:test": "npm run test --workspace=frontend",
-    "cap:sync": "npm run build --workspace=frontend && npx cap sync android"
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "test": "npm run test --prefix backend && npm run test --prefix frontend",
+    "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
+    "backend:dev": "npm run dev --prefix backend",
+    "backend:build": "npm run build --prefix backend",
+    "backend:test": "npm run test --prefix backend",
+    "frontend:dev": "npm run dev --prefix frontend",
+    "frontend:build": "npm run build --prefix frontend",
+    "frontend:test": "npm run test --prefix frontend",
+    "cap:sync": "npm run build --prefix frontend && npx cap sync android"
   },
   "devDependencies": {
     "@capacitor/android": "^7.0.1",
