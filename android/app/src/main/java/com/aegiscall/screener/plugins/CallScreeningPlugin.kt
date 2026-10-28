@@ -236,6 +236,41 @@ class CallScreeningPlugin : Plugin() {
         instance = this
     }
 
+    // --- BATTERY OPTIMIZATION & BACKGROUND LONGEVITY ---
+
+    @PluginMethod
+    fun checkBatteryOptimizationStatus(call: PluginCall) {
+        val isIgnoring = com.aegiscall.screener.telecom.BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
+        val ret = JSObject().apply {
+            put("isIgnoringBatteryOptimizations", isIgnoring)
+            put("isLongTermProtected", isIgnoring)
+        }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun requestIgnoreBatteryOptimizations(call: PluginCall) {
+        val intent = com.aegiscall.screener.telecom.BatteryOptimizationHelper.createIgnoreBatteryOptimizationIntent(context)
+        if (intent != null) {
+            try {
+                activity.startActivity(intent)
+                val ret = JSObject().apply {
+                    put("success", true)
+                    put("message", "Battery optimization dialog launched")
+                }
+                call.resolve(ret)
+            } catch (e: Exception) {
+                call.reject("Failed to launch battery optimization request: ${e.message}")
+            }
+        } else {
+            val ret = JSObject().apply {
+                put("success", true)
+                put("message", "Not required on this Android API level")
+            }
+            call.resolve(ret)
+        }
+    }
+
     // --- DIALER / PHONE APP ROLE ---
 
     @PluginMethod
