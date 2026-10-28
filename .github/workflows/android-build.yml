@@ -22,9 +22,7 @@ jobs:
           node-version: 20
 
       - name: Install Frontend Dependencies
-        run: |
-          npm install --prefix frontend
-          npm install
+        run: npm install --prefix frontend
 
       - name: Build Web Production Bundle
         run: npm run build --prefix frontend
