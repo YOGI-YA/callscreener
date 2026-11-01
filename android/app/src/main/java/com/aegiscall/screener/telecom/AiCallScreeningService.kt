@@ -146,15 +146,16 @@ class AiCallScreeningService : CallScreeningService() {
             .post(requestBody)
             .build()
 
-        val response = httpClient.newCall(request).execute()
-        if (!response.isSuccessful) {
-            throw IllegalStateException("HTTP Error: ${response.code}")
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IllegalStateException("HTTP Error: ${response.code}")
+            }
+
+            val responseString = response.body?.string() ?: throw IllegalStateException("Empty response body")
+            val screeningResponse = gson.fromJson(responseString, ScreeningResponse::class.java)
+
+            return screeningResponse.data ?: throw IllegalStateException("No screening data returned")
         }
-
-        val responseString = response.body?.string() ?: throw IllegalStateException("Empty response body")
-        val screeningResponse = gson.fromJson(responseString, ScreeningResponse::class.java)
-
-        return screeningResponse.data ?: throw IllegalStateException("No screening data returned")
     }
 
     override fun onDestroy() {
