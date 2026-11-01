@@ -101,5 +101,22 @@ describe('Performance Optimization & High-Throughput Stream Suite', () => {
       (cache as any).cache.get('temp').expiresAt = Date.now() - 50;
       expect(cache.get('temp')).toBeUndefined();
     });
+
+    it('supports peek without altering LRU order and purges expired entries proactively', () => {
+      const cache = new LruCacheWithTtl<string, string>(2, 60000);
+      cache.set('k1', 'val1');
+      cache.set('k2', 'val2');
+
+      // peek should return val1 without registering a hit in stats
+      expect(cache.peek('k1')).toBe('val1');
+      expect(cache.stats.hits).toBe(0);
+
+      // Simulate expiration of k1
+      (cache as any).cache.get('k1').expiresAt = Date.now() - 1000;
+      const purgedCount = cache.purgeExpired();
+      expect(purgedCount).toBe(1);
+      expect(cache.peek('k1')).toBeUndefined();
+      expect(cache.size).toBe(1);
+    });
   });
 });

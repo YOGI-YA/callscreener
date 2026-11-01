@@ -47,6 +47,35 @@ export class LruCacheWithTtl<K = string, V = any> {
   }
 
   /**
+   * Retrieves a cached value without changing its LRU order or hit/miss statistics.
+   */
+  public peek(key: K): V | undefined {
+    const entry = this.cache.get(key);
+    if (!entry) return undefined;
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return undefined;
+    }
+    return entry.value;
+  }
+
+  /**
+   * Actively sweeps and evicts all expired items from memory.
+   * Returns count of purged keys.
+   */
+  public purgeExpired(): number {
+    const now = Date.now();
+    let purged = 0;
+    for (const [key, entry] of this.cache.entries()) {
+      if (now > entry.expiresAt) {
+        this.cache.delete(key);
+        purged++;
+      }
+    }
+    return purged;
+  }
+
+  /**
    * Stores a value in the cache with optional specific TTL.
    * Evicts least recently used item if capacity is exceeded.
    */
@@ -54,10 +83,15 @@ export class LruCacheWithTtl<K = string, V = any> {
     if (this.cache.has(key)) {
       this.cache.delete(key);
     } else if (this.cache.size >= this.maxEntries) {
-      // Evict oldest entry (first item in Map iterator)
-      const oldestKey = this.cache.keys().next().value;
-      if (oldestKey !== undefined) {
-        this.cache.delete(oldestKey);
+      // First attempt to reclaim expired slots
+      this.purgeExpired();
+
+      // If still at capacity, evict oldest entry
+      if (this.cache.size >= this.maxEntries) {
+        const oldestKey = this.cache.keys().next().value;
+        if (oldestKey !== undefined) {
+          this.cache.delete(oldestKey);
+        }
       }
     }
 
