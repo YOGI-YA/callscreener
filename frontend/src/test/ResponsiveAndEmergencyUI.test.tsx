@@ -44,11 +44,13 @@ describe('Responsive Layout Modes, Emergency Safe-Words & Fraud Reporting UI', (
   it('renders Security Alert Webhook Dispatcher card in SettingsTab', async () => {
     render(<SettingsTab roleGranted={true} onRefreshRole={vi.fn()} />);
 
-    expect(screen.getByText(/Security Alert Webhook Dispatcher/i)).toBeInTheDocument();
-    expect(screen.getByText(/Real-time HMAC-signed notification pipeline/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Security Alert Webhook Dispatcher/i)).toBeInTheDocument();
+      expect(screen.getByText(/Real-time HMAC-signed notification pipeline/i)).toBeInTheDocument();
+    });
   });
 
-  it('renders Export Report (CSV) button in CallLogsTab and triggers export', () => {
+  it('renders Export Report (CSV) button in CallLogsTab and triggers export', async () => {
     const mockLogs: ScreeningResult[] = [
       {
         id: 'scr-1',
@@ -96,7 +98,9 @@ describe('Responsive Layout Modes, Emergency Safe-Words & Fraud Reporting UI', (
     expect(exportBtn).toBeInTheDocument();
 
     fireEvent.click(exportBtn);
-    expect(screen.getByText(/National Fraud Complaint Report \(CSV\) downloaded!/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/National Fraud Complaint Report \(CSV\) downloaded!/i)).toBeInTheDocument();
+    });
   });
 
   it('renders AcousticBotBadge in CallModal when robocall bot telemetry is present', () => {

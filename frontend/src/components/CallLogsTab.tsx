@@ -34,19 +34,19 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioNotice, setAudioNotice] = useState<string | null>(null);
 
-  const loadRecordings = async () => {
-    try {
-      const res = await CapacitorService.getRecordedCalls();
-      if (res.success && res.recordings) {
+  useEffect(() => {
+    let isMounted = true;
+    CapacitorService.getRecordedCalls().then((res) => {
+      if (isMounted && res.success && res.recordings) {
         setRecordings(res.recordings);
       }
-    } catch (e) {
+    }).catch((e) => {
       console.warn('Error loading recordings:', e);
-    }
-  };
+    });
 
-  useEffect(() => {
-    loadRecordings();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleDeleteRecording = async (filePath: string) => {

@@ -22,12 +22,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
   const [batteryIgnored, setBatteryIgnored] = useState(false);
   const [longevityNotice, setLongevityNotice] = useState<string | null>(null);
 
-  useEffect(() => {
-    CapacitorService.checkBatteryOptimizationStatus().then((res) => {
-      setBatteryIgnored(res.isIgnoringBatteryOptimizations);
-    });
-  }, []);
-
   // Personal Voicemail & Custom Greeting State
   const [screeningMode, setScreeningModeState] = useState<'AI_ASSISTANT' | 'PERSONAL_VOICEMAIL'>('AI_ASSISTANT');
   const [customGreetingInfo, setCustomGreetingInfo] = useState<{ hasGreeting: boolean; durationSeconds: number; filePath: string }>({
@@ -168,11 +162,21 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
   const timerIntervalRef = useRef<any>(null);
 
   useEffect(() => {
-    CapacitorService.checkDialerRole().then((res) => setDialerGranted(res.isDefaultDialer));
-    CapacitorService.getScreeningMode().then((res) => setScreeningModeState(res.mode));
-    CapacitorService.getCustomGreeting().then(setCustomGreetingInfo);
+    let isMounted = true;
+    CapacitorService.checkBatteryOptimizationStatus().then((res) => {
+      if (isMounted) setBatteryIgnored(res.isIgnoringBatteryOptimizations);
+    }).catch(() => {});
+    CapacitorService.checkDialerRole().then((res) => {
+      if (isMounted) setDialerGranted(res.isDefaultDialer);
+    }).catch(() => {});
+    CapacitorService.getScreeningMode().then((res) => {
+      if (isMounted) setScreeningModeState(res.mode);
+    }).catch(() => {});
+    CapacitorService.getCustomGreeting().then((info) => {
+      if (isMounted) setCustomGreetingInfo(info);
+    }).catch(() => {});
     ApiService.getEmailSettings().then((settings) => {
-      if (settings) {
+      if (isMounted && settings) {
         setEmailForwarding({
           enabled: settings.enabled ?? true,
           toEmail: settings.toEmail || '',
@@ -180,7 +184,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
           autoForwardOnDisconnect: settings.autoForwardOnDisconnect ?? true
         });
       }
-    });
+    }).catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleToggleScreeningMode = async (mode: 'AI_ASSISTANT' | 'PERSONAL_VOICEMAIL') => {
