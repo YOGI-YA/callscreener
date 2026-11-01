@@ -162,26 +162,32 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
     setTimeout(() => setAudioNotice(null), 3000);
   };
 
-  const filteredLogs = logs.filter((log) => {
-    const matchesSearch =
-      searchTerm.trim() === '' ||
-      log.phoneNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.callerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.rationale.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredLogs = React.useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return logs.filter((log) => {
+      const matchesSearch =
+        term === '' ||
+        log.phoneNumber.toLowerCase().includes(term) ||
+        (log.callerName && log.callerName.toLowerCase().includes(term)) ||
+        (log.rationale && log.rationale.toLowerCase().includes(term));
 
-    const matchesVerdict = verdictFilter === 'ALL' || log.verdict === verdictFilter;
-    const matchesRiskLevel = riskLevelFilter === 'ALL' || log.riskLevel === riskLevelFilter;
+      const matchesVerdict = verdictFilter === 'ALL' || log.verdict === verdictFilter;
+      const matchesRiskLevel = riskLevelFilter === 'ALL' || log.riskLevel === riskLevelFilter;
 
-    return matchesSearch && matchesVerdict && matchesRiskLevel;
-  });
+      return matchesSearch && matchesVerdict && matchesRiskLevel;
+    });
+  }, [logs, searchTerm, verdictFilter, riskLevelFilter]);
 
-  const filteredRecordings = recordings.filter((r) => {
-    return (
-      searchTerm.trim() === '' ||
-      r.phoneNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.fileName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
+  const filteredRecordings = React.useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return recordings.filter((r) => {
+      return (
+        term === '' ||
+        r.phoneNumber.toLowerCase().includes(term) ||
+        r.fileName.toLowerCase().includes(term)
+      );
+    });
+  }, [recordings, searchTerm]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -355,9 +361,32 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-              {filteredLogs.length} Screened Events
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                {searchTerm.trim() || verdictFilter !== 'ALL' || riskLevelFilter !== 'ALL'
+                  ? `Showing ${filteredLogs.length} of ${logs.length} Events`
+                  : `${filteredLogs.length} Screened Events`}
+              </span>
+              {(searchTerm.trim() || verdictFilter !== 'ALL' || riskLevelFilter !== 'ALL') && (
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setVerdictFilter('ALL');
+                    setRiskLevelFilter('ALL');
+                  }}
+                  style={{
+                    fontSize: '0.7rem',
+                    color: 'var(--accent-glow)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Reset filters
+                </button>
+              )}
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {filteredLogs.length > 0 && (
                 <button

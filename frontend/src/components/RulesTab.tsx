@@ -15,6 +15,18 @@ export const RulesTab: React.FC<RulesTabProps> = ({ rules, onAddRule, onDeleteRu
   const [action, setAction] = useState<ScreeningVerdict>('REJECT');
   const [ruleType, setRuleType] = useState<ScreeningRule['type']>('BLACKLIST');
   const [testInput, setTestInput] = useState('');
+  const [ruleSearch, setRuleSearch] = useState('');
+
+  const filteredRules = React.useMemo(() => {
+    const q = ruleSearch.trim().toLowerCase();
+    if (!q) return rules;
+    return rules.filter((r) =>
+      r.pattern.toLowerCase().includes(q) ||
+      r.description.toLowerCase().includes(q) ||
+      r.type.toLowerCase().includes(q) ||
+      r.action.toLowerCase().includes(q)
+    );
+  }, [rules, ruleSearch]);
 
   const matchingRule = React.useMemo(() => {
     if (!testInput.trim()) return null;
@@ -248,9 +260,32 @@ export const RulesTab: React.FC<RulesTabProps> = ({ rules, onAddRule, onDeleteRu
         )}
       </div>
 
+      {/* Rules Search and Counter */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          placeholder="Filter rules by pattern, tag, or action..."
+          value={ruleSearch}
+          onChange={(e) => setRuleSearch(e.target.value)}
+          style={{
+            flex: 1,
+            minWidth: '200px',
+            padding: '7px 12px',
+            background: 'rgba(0, 0, 0, 0.25)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.8rem',
+            color: 'var(--text-primary)'
+          }}
+        />
+        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+          {ruleSearch.trim() ? `Showing ${filteredRules.length} of ${rules.length} Rules` : `${rules.length} Total Rules`}
+        </span>
+      </div>
+
       {/* Rules List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {rules.map((rule) => {
+        {filteredRules.map((rule) => {
           const isAllow = rule.action === 'ALLOW';
           return (
             <div
