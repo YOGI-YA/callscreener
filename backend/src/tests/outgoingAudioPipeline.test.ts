@@ -89,6 +89,17 @@ describe('Outgoing Telephony Audio Pipeline & Synthesizer Suite', () => {
       expect(res.processedBuffer.length).toBe(320);
       expect(res.samplesClipped).toBe(0);
     });
+
+    it('gracefully handles empty and single-byte buffers without throwing', () => {
+      const agc = new DynamicGainController({}, 8000);
+      const resEmpty = agc.processPcmBuffer(Buffer.alloc(0));
+      expect(resEmpty.processedBuffer.length).toBe(0);
+      expect(resEmpty.rmsDb).toBe(-96);
+
+      const resOneByte = agc.processPcmBuffer(Buffer.alloc(1));
+      expect(resOneByte.processedBuffer.length).toBe(0);
+      agc.reset();
+    });
   });
 
   describe('DtmfToneGenerator', () => {

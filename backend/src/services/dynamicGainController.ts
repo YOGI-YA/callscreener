@@ -45,8 +45,18 @@ export class DynamicGainController {
     appliedGainDb: number;
     samplesClipped: number;
   } {
-    const samplesCount = pcmBuffer.length / 2;
-    const outputBuffer = Buffer.alloc(pcmBuffer.length);
+    if (!pcmBuffer || pcmBuffer.length < 2) {
+      return {
+        processedBuffer: Buffer.alloc(0),
+        rmsDb: -96,
+        peakDb: -96,
+        appliedGainDb: Math.round(20 * Math.log10(Math.max(1e-6, this.currentGain)) * 10) / 10,
+        samplesClipped: 0
+      };
+    }
+
+    const samplesCount = Math.floor(pcmBuffer.length / 2);
+    const outputBuffer = Buffer.alloc(samplesCount * 2);
 
     let sumSquares = 0;
     let maxPeak = 0;
@@ -81,12 +91,13 @@ export class DynamicGainController {
 
       let amplified = input * this.currentGain;
 
-      // Soft-knee tanh ceiling compression
+      // Soft-knee tanh ceiling compression with safe divisor clamp
       const ceiling = Math.pow(10, this.thresholdDbfs / 20); // ~0.84
       if (Math.abs(amplified) > ceiling) {
         const sign = Math.sign(amplified);
         const over = Math.abs(amplified) - ceiling;
-        amplified = sign * (ceiling + (1 - ceiling) * Math.tanh(over / (1 - ceiling)));
+        const headroom = Math.max(0.001, 1 - ceiling);
+        amplified = sign * (ceiling + headroom * Math.tanh(over / headroom));
         clippedCount++;
       }
 
@@ -97,7 +108,7 @@ export class DynamicGainController {
     }
 
     const peakDb = maxPeak > 1e-6 ? 20 * Math.log10(maxPeak) : -96;
-    const appliedGainDb = 20 * Math.log10(this.currentGain);
+    const appliedGainDb = 20 * Math.log10(Math.max(1e-6, this.currentGain));
 
     return {
       processedBuffer: outputBuffer,
@@ -106,5 +117,9 @@ export class DynamicGainController {
       appliedGainDb: Math.round(appliedGainDb * 10) / 10,
       samplesClipped: clippedCount
     };
+  }
+
+  public reset(): void {
+    this.currentGain = 1.0;
   }
 }
