@@ -11,7 +11,7 @@ export interface OutgoingAudioMonitorProps {
   onToggleMute?: () => void;
 }
 
-export const OutgoingAudioMonitor: React.FC<OutgoingAudioMonitorProps> = ({
+export const OutgoingAudioMonitor: React.FC<OutgoingAudioMonitorProps> = React.memo(({
   isCallActive,
   isAiSpeaking,
   uplinkVolumeDb = -18,
@@ -189,4 +189,4 @@ export const OutgoingAudioMonitor: React.FC<OutgoingAudioMonitorProps> = ({
       </div>
     </div>
   );
-};
+});

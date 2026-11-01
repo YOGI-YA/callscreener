@@ -10,7 +10,7 @@ export interface VoicemailAudioPlayerProps {
   audioUrl?: string;
 }
 
-export const VoicemailAudioPlayer: React.FC<VoicemailAudioPlayerProps> = ({
+export const VoicemailAudioPlayer: React.FC<VoicemailAudioPlayerProps> = React.memo(({
   durationSeconds = 24,
   callerName = 'Caller Voicemail',
   transcription,
@@ -240,4 +240,4 @@ export const VoicemailAudioPlayer: React.FC<VoicemailAudioPlayerProps> = ({
       )}
     </div>
   );
-};
+});

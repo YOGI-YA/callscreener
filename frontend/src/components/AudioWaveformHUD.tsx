@@ -9,7 +9,7 @@ export interface AudioWaveformHUDProps {
   sampleRateHz?: number;
 }
 
-export const AudioWaveformHUD: React.FC<AudioWaveformHUDProps> = ({
+export const AudioWaveformHUD: React.FC<AudioWaveformHUDProps> = React.memo(({
   activeSpeaker = 'CALLER',
   isListening = true,
   uplinkSilenced = true,
@@ -146,4 +146,4 @@ export const AudioWaveformHUD: React.FC<AudioWaveformHUDProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -9,7 +9,7 @@ interface RiskBadgeProps {
   showScore?: boolean;
 }
 
-export const RiskBadge: React.FC<RiskBadgeProps> = ({ level, verdict, score, showScore = true }) => {
+export const RiskBadge: React.FC<RiskBadgeProps> = React.memo(({ level, verdict, score, showScore = true }) => {
   const getBadgeClass = () => {
     switch (level) {
       case 'SAFE':
@@ -63,14 +63,14 @@ export const RiskBadge: React.FC<RiskBadgeProps> = ({ level, verdict, score, sho
       )}
     </span>
   );
-};
+});
 
 export interface StirShakenBadgeProps {
   status?: 'VERIFIED_A' | 'PARTIAL_B' | 'GATEWAY_C' | 'FAILED_SPOOF' | 'NOT_VERIFIED';
   compact?: boolean;
 }
 
-export const StirShakenBadge: React.FC<StirShakenBadgeProps> = ({ status = 'NOT_VERIFIED', compact = false }) => {
+export const StirShakenBadge: React.FC<StirShakenBadgeProps> = React.memo(({ status = 'NOT_VERIFIED', compact = false }) => {
   if (status === 'VERIFIED_A') {
     return (
       <span
@@ -165,14 +165,14 @@ export const StirShakenBadge: React.FC<StirShakenBadgeProps> = ({ status = 'NOT_
       <span>{compact ? 'Unverified' : 'Carrier Unverified'}</span>
     </span>
   );
-};
+});
 
 export interface DeepfakeBiometricBadgeProps {
   syntheticProbability?: number; // 0 to 100
   compact?: boolean;
 }
 
-export const DeepfakeBiometricBadge: React.FC<DeepfakeBiometricBadgeProps> = ({
+export const DeepfakeBiometricBadge: React.FC<DeepfakeBiometricBadgeProps> = React.memo(({
   syntheticProbability = 4,
   compact = false
 }) => {
@@ -248,13 +248,13 @@ export const DeepfakeBiometricBadge: React.FC<DeepfakeBiometricBadgeProps> = ({
       <span>{compact ? 'Human Voice' : 'Acoustic Biometric: Authentic Human'}</span>
     </span>
   );
-};
+});
 
 export const AcousticBotBadge: React.FC<{
   isRobocall?: boolean;
   cadenceScore?: number;
   fingerprint?: string;
-}> = ({ isRobocall, cadenceScore = 0, fingerprint }) => {
+}> = React.memo(({ isRobocall, cadenceScore = 0, fingerprint }) => {
   if (!isRobocall && cadenceScore < 60) return null;
 
   return (
@@ -280,4 +280,4 @@ export const AcousticBotBadge: React.FC<{
       </span>
     </span>
   );
-};
+});
