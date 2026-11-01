@@ -12,6 +12,7 @@ import { CallSimulatorSandbox } from './components/CallSimulatorSandbox';
 import { ApiService } from './services/api';
 import { CapacitorService } from './services/capacitorService';
 import { AutoSetupWizard } from './components/AutoSetupWizard';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { IncomingCallPayload, ScreeningResult, CallScreeningStats, ScreeningRule, ScreeningVerdict, SimulationScenario } from './types';
 
 export const App: React.FC = () => {
@@ -392,54 +393,56 @@ export const App: React.FC = () => {
 
         {/* Scrollable Main Views */}
         <main className="app-content">
-          {showSandbox && (
-            <CallSimulatorSandbox onLaunchLiveCall={handleLaunchSandboxScenario} />
-          )}
+          <ErrorBoundary onReset={refreshAllData}>
+            {showSandbox && (
+              <CallSimulatorSandbox onLaunchLiveCall={handleLaunchSandboxScenario} />
+            )}
 
-          {activeTab === 'dashboard' && (
-            <DashboardTab
-              stats={stats}
-              recentLogs={logs}
-              backendStatus={backendStatus}
-              roleGranted={roleGranted}
-              onLaunchSimulator={() => setActiveTab('dialer')}
-              onSelectLog={(log) => setSelectedLog(log)}
-              onNavigateToTab={(tab) => setActiveTab(tab as TabId)}
-              onSimulateScenario={handleSimulateScenario}
-            />
-          )}
+            {activeTab === 'dashboard' && (
+              <DashboardTab
+                stats={stats}
+                recentLogs={logs}
+                backendStatus={backendStatus}
+                roleGranted={roleGranted}
+                onLaunchSimulator={() => setActiveTab('dialer')}
+                onSelectLog={(log) => setSelectedLog(log)}
+                onNavigateToTab={(tab) => setActiveTab(tab as TabId)}
+                onSimulateScenario={handleSimulateScenario}
+              />
+            )}
 
-          {activeTab === 'dialer' && (
-            <DialerTab
-              onIncomingCallPayload={handleDialerAiScreen}
-              onOutgoingCall={handleOutgoingCall}
-            />
-          )}
+            {activeTab === 'dialer' && (
+              <DialerTab
+                onIncomingCallPayload={handleDialerAiScreen}
+                onOutgoingCall={handleOutgoingCall}
+              />
+            )}
 
-          {activeTab === 'logs' && (
-            <CallLogsTab
-              logs={logs}
-              onDeleteLog={handleDeleteLog}
-              onClearAll={handleClearAllLogs}
-              onSelectLog={(log) => setSelectedLog(log)}
-              onAddRule={(pattern, action, desc) => handleAddRule({ pattern, action, description: desc })}
-            />
-          )}
+            {activeTab === 'logs' && (
+              <CallLogsTab
+                logs={logs}
+                onDeleteLog={handleDeleteLog}
+                onClearAll={handleClearAllLogs}
+                onSelectLog={(log) => setSelectedLog(log)}
+                onAddRule={(pattern, action, desc) => handleAddRule({ pattern, action, description: desc })}
+              />
+            )}
 
-          {activeTab === 'rules' && (
-            <RulesTab
-              rules={rules}
-              onAddRule={handleAddRule}
-              onDeleteRule={handleDeleteRule}
-            />
-          )}
+            {activeTab === 'rules' && (
+              <RulesTab
+                rules={rules}
+                onAddRule={handleAddRule}
+                onDeleteRule={handleDeleteRule}
+              />
+            )}
 
-          {activeTab === 'settings' && (
-            <SettingsTab
-              roleGranted={roleGranted}
-              onRefreshRole={() => CapacitorService.checkRoleStatus().then((s) => setRoleGranted(s.roleGranted))}
-            />
-          )}
+            {activeTab === 'settings' && (
+              <SettingsTab
+                roleGranted={roleGranted}
+                onRefreshRole={() => CapacitorService.checkRoleStatus().then((s) => setRoleGranted(s.roleGranted))}
+              />
+            )}
+          </ErrorBoundary>
         </main>
 
         {/* Live Incoming Call Simulation Overlay */}
