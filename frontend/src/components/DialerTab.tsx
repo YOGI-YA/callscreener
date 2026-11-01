@@ -649,6 +649,7 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
               {KEYS.map(([digit, letters]) => (
                 <button
                   key={digit}
+                  aria-label={letters ? `Dial ${digit}, ${letters}` : `Dial ${digit}`}
                   onMouseDown={() => handleDial(digit)}
                   style={{
                     padding: '14px 0',
@@ -677,6 +678,7 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
               <button
                 onClick={() => handleCall(dialNumber)}
                 disabled={!dialNumber}
+                aria-label="Initiate Phone Call"
                 style={{
                   width: 68,
                   height: 68,
