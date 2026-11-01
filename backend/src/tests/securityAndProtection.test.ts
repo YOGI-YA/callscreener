@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { inspectCallerUtterance } from '../services/promptInjectionDefense.js';
 import { evaluateStirShaken } from '../services/stirShakenService.js';
 import { LLMScreeningEngine } from '../services/llmScreeningEngine.js';
-import { preventReplayAttacks, verifyHmacSignature, validateAudioMimeType } from '../middleware/securityMiddleware.js';
+import { preventReplayAttacks, verifyHmacSignature, validateAudioMimeType, applySecurityHeaders } from '../middleware/securityMiddleware.js';
 import { requireApiKeyAuth } from '../middleware/authMiddleware.js';
 import { maskSensitiveText } from '../services/sensitiveDataMasker.js';
 import { RateLimiter } from '../middleware/rateLimiter.js';
@@ -209,6 +209,45 @@ describe('Security & Threat Protection Test Suite', () => {
       expect(throttled.statusCode).toBe(429);
       expect(throttled.calledNext).toBe(false);
       expect(throttled.responseJson.error).toBe('RATE_LIMIT_EXCEEDED');
+
+      // Clean up resources and stop timers
+      limiter.destroy();
+      expect(limiter.bucketCount).toBe(0);
+    });
+
+    it('enforces maximum bucket capacity bounds to prevent memory starvation', () => {
+      const limiter = new RateLimiter(5, 1, false, 2); // max 2 buckets
+      const mw = limiter.middleware();
+      const mockReq = (ip: string) => ({
+        headers: { 'x-test-rate-limit': 'true' },
+        socket: { remoteAddress: ip }
+      } as any);
+      const mockRes = () => ({ setHeader: vi.fn(), status: vi.fn().mockReturnThis(), json: vi.fn() } as any);
+
+      mw(mockReq('1.1.1.1'), mockRes(), () => {});
+      mw(mockReq('2.2.2.2'), mockRes(), () => {});
+      expect(limiter.bucketCount).toBeLessThanOrEqual(2);
+
+      mw(mockReq('3.3.3.3'), mockRes(), () => {});
+      expect(limiter.bucketCount).toBeLessThanOrEqual(2);
+      limiter.destroy();
+    });
+  });
+
+  describe('Security Headers Middleware', () => {
+    it('attaches comprehensive defensive headers to HTTP responses', () => {
+      const headers: Record<string, string> = {};
+      const res: any = {
+        setHeader: (k: string, v: string) => { headers[k] = v; }
+      };
+      let called = false;
+      applySecurityHeaders({} as any, res, () => { called = true; });
+
+      expect(called).toBe(true);
+      expect(headers['X-Content-Type-Options']).toBe('nosniff');
+      expect(headers['X-Frame-Options']).toBe('DENY');
+      expect(headers['X-Permitted-Cross-Domain-Policies']).toBe('none');
+      expect(headers['Permissions-Policy']).toContain('camera=()');
     });
   });
 

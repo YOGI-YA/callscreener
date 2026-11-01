@@ -15,21 +15,41 @@ export class RateLimiter {
   private capacity: number;
   private refillRatePerSec: number;
   private enableSubnetClustering: boolean;
+  private cleanupTimer: NodeJS.Timeout | null = null;
+  private readonly maxBuckets: number;
 
-  constructor(capacity = 60, refillRatePerSec = 2, enableSubnetClustering = true) {
+  constructor(capacity = 60, refillRatePerSec = 2, enableSubnetClustering = true, maxBuckets = 5000) {
     this.capacity = capacity;
     this.refillRatePerSec = refillRatePerSec;
     this.enableSubnetClustering = enableSubnetClustering;
+    this.maxBuckets = maxBuckets;
 
     // Periodic sweep to prevent unbounded memory growth
-    setInterval(() => {
-      const now = Date.now();
-      for (const [key, bucket] of this.buckets.entries()) {
-        if (now - bucket.lastRefill > 5 * 60 * 1000) {
-          this.buckets.delete(key);
-        }
+    this.cleanupTimer = setInterval(() => {
+      this.purgeExpiredBuckets();
+    }, 60 * 1000);
+    this.cleanupTimer.unref();
+  }
+
+  public purgeExpiredBuckets(): void {
+    const now = Date.now();
+    for (const [key, bucket] of this.buckets.entries()) {
+      if (now - bucket.lastRefill > 5 * 60 * 1000) {
+        this.buckets.delete(key);
       }
-    }, 60 * 1000).unref();
+    }
+  }
+
+  public destroy(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+    this.buckets.clear();
+  }
+
+  public get bucketCount(): number {
+    return this.buckets.size;
   }
 
   /**
@@ -71,6 +91,13 @@ export class RateLimiter {
 
       let bucket = this.buckets.get(clusterKey);
       if (!bucket) {
+        if (this.buckets.size >= this.maxBuckets) {
+          this.purgeExpiredBuckets();
+          if (this.buckets.size >= this.maxBuckets) {
+            const firstKey = this.buckets.keys().next().value;
+            if (firstKey) this.buckets.delete(firstKey);
+          }
+        }
         bucket = { tokens: this.capacity, lastRefill: now, penaltyMultiplier: 1 };
         this.buckets.set(clusterKey, bucket);
       } else {
