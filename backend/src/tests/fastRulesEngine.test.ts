@@ -131,4 +131,11 @@ describe('FastRulesEngine', () => {
     expect(fallback.engine).toBe('FAST_LOCAL_FALLBACK');
     expect(fallback.rationale).toContain('Test timeout');
   });
+
+  it('reuses compiled regular expressions across successive evaluations', () => {
+    FastRulesEngine.clearRegexCache();
+    const regex1 = FastRulesEngine.getCompiledRegex('^(\\+?1?(900|976))');
+    const regex2 = FastRulesEngine.getCompiledRegex('^(\\+?1?(900|976))');
+    expect(regex1).toBe(regex2); // Same object reference in cache
+  });
 });

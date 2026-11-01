@@ -80,6 +80,23 @@ export class FastRulesEngine {
   private static customRules: ScreeningRule[] = [];
   private static storageFile = path.resolve(process.cwd(), 'data', 'rules.json');
   private static isInitialized = false;
+  private static regexCache = new Map<string, RegExp>();
+
+  /**
+   * Retrieves or compiles and caches a regular expression instance.
+   */
+  public static getCompiledRegex(pattern: string): RegExp {
+    let regex = this.regexCache.get(pattern);
+    if (!regex) {
+      regex = new RegExp(pattern, 'i');
+      this.regexCache.set(pattern, regex);
+    }
+    return regex;
+  }
+
+  public static clearRegexCache(): void {
+    this.regexCache.clear();
+  }
 
   private static ensureLoaded(): void {
     if (this.isInitialized) return;
@@ -188,12 +205,12 @@ export class FastRulesEngine {
       });
     }
 
-    // 2. Evaluate active custom and default rules (regex)
+    // 2. Evaluate active custom and default rules (cached regex)
     const allRules = this.getRules().filter((r) => r.enabled);
     const rawNumber = payload.phoneNumber;
     for (const rule of allRules) {
       try {
-        const regex = new RegExp(rule.pattern, 'i');
+        const regex = this.getCompiledRegex(rule.pattern);
         if (
           regex.test(cleanNumber) ||
           regex.test(rawNumber) ||
