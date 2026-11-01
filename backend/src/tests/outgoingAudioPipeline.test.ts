@@ -3,6 +3,7 @@ import { OutgoingAudioSynthesizer } from '../services/outgoingAudioSynthesizer.j
 import { ComfortNoiseGenerator } from '../services/comfortNoiseGenerator.js';
 import { DynamicGainController } from '../services/dynamicGainController.js';
 import { DtmfToneGenerator } from '../services/dtmfToneGenerator.js';
+import { CircularRingBuffer, AudioBufferPool } from '../services/audioRingBuffer.js';
 
 describe('Outgoing Telephony Audio Pipeline & Synthesizer Suite', () => {
   describe('OutgoingAudioSynthesizer', () => {
@@ -113,6 +114,48 @@ describe('Outgoing Telephony Audio Pipeline & Synthesizer Suite', () => {
 
     it('throws error on invalid character', () => {
       expect(() => DtmfToneGenerator.generateDigit('Z')).toThrow('Unsupported DTMF digit');
+    });
+  });
+
+  describe('CircularRingBuffer & AudioBufferPool Performance', () => {
+    it('accurately writes and reads contiguous and wrapping PCM blocks', () => {
+      const ring = new CircularRingBuffer(16);
+      expect(ring.availableBytes).toBe(0);
+      expect(ring.freeSpaceBytes).toBe(16);
+
+      // Write 10 bytes
+      const inputA = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      expect(ring.write(inputA)).toBe(10);
+      expect(ring.availableBytes).toBe(10);
+
+      // Read 6 bytes
+      const readA = ring.read(6);
+      expect(readA).toEqual(Buffer.from([1, 2, 3, 4, 5, 6]));
+      expect(ring.availableBytes).toBe(4);
+
+      // Write 8 bytes to trigger wrap-around across boundary
+      const inputB = Buffer.from([11, 12, 13, 14, 15, 16, 17, 18]);
+      expect(ring.write(inputB)).toBe(8);
+      expect(ring.availableBytes).toBe(12);
+
+      // Read remaining 12 bytes across wrap boundary
+      const readB = ring.read(12);
+      expect(readB).toEqual(Buffer.from([7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]));
+      expect(ring.availableBytes).toBe(0);
+    });
+
+    it('manages AudioBufferPool without memory churning', () => {
+      const pool = new AudioBufferPool(320, 10);
+      expect(pool.availableBuffers).toBeGreaterThan(0);
+
+      const buf = pool.acquire();
+      expect(buf.length).toBe(320);
+      buf[0] = 42;
+
+      pool.release(buf);
+      const reacquired = pool.acquire();
+      // Should be zeroed out
+      expect(reacquired[0]).toBe(0);
     });
   });
 });

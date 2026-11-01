@@ -17,17 +17,26 @@ export class CircularRingBuffer {
   }
 
   /**
-   * Writes PCM bytes into the ring buffer.
+   * Writes PCM bytes into the ring buffer using high-performance chunked memory copy.
    * If writing exceeds capacity, older unread bytes are dropped (loss-resilient audio stream).
    */
   public write(data: Buffer): number {
-    const bytesToWrite = Math.min(data.length, this.capacity);
+    if (!data || data.length === 0) return 0;
 
-    for (let i = 0; i < bytesToWrite; i++) {
-      this.buffer[this.writePos] = data[i];
-      this.writePos = (this.writePos + 1) % this.capacity;
+    const bytesToWrite = Math.min(data.length, this.capacity);
+    const offset = data.length - bytesToWrite;
+
+    // First contiguous segment
+    const firstChunk = Math.min(bytesToWrite, this.capacity - this.writePos);
+    data.copy(this.buffer, this.writePos, offset, offset + firstChunk);
+
+    // Second segment if wrapping past capacity boundary
+    const secondChunk = bytesToWrite - firstChunk;
+    if (secondChunk > 0) {
+      data.copy(this.buffer, 0, offset + firstChunk, offset + bytesToWrite);
     }
 
+    this.writePos = (this.writePos + bytesToWrite) % this.capacity;
     this.available = Math.min(this.capacity, this.available + bytesToWrite);
     if (this.available === this.capacity) {
       // Overwrite condition: advance read pointer
@@ -38,20 +47,24 @@ export class CircularRingBuffer {
   }
 
   /**
-   * Reads up to `length` bytes from the ring buffer into an output buffer.
+   * Reads up to `length` bytes from the ring buffer into an output buffer using chunked memory copy.
    */
   public read(length: number): Buffer {
     const bytesToRead = Math.min(length, this.available);
-    if (bytesToRead === 0) {
+    if (bytesToRead <= 0) {
       return Buffer.alloc(0);
     }
 
     const output = Buffer.alloc(bytesToRead);
-    for (let i = 0; i < bytesToRead; i++) {
-      output[i] = this.buffer[this.readPos];
-      this.readPos = (this.readPos + 1) % this.capacity;
+    const firstChunk = Math.min(bytesToRead, this.capacity - this.readPos);
+    this.buffer.copy(output, 0, this.readPos, this.readPos + firstChunk);
+
+    const secondChunk = bytesToRead - firstChunk;
+    if (secondChunk > 0) {
+      this.buffer.copy(output, firstChunk, 0, secondChunk);
     }
 
+    this.readPos = (this.readPos + bytesToRead) % this.capacity;
     this.available -= bytesToRead;
     return output;
   }
