@@ -15,6 +15,56 @@ const OTP_REGEX = /\b(otp|code|pin|passcode|token|verification)\s*(is|:)?\s*(\d{
 const CVV_REGEX = /\b(cvv|cvc|security code)\s*(is|:)?\s*(\d{3,4})\b/gi;
 const BANK_ACCOUNT_REGEX = /\b(account|routing)\s*(number|no|#)?\s*(is|:)?\s*(\d{8,17})\b/gi;
 
+export interface DetectedSensitiveItem {
+  type: 'OTP' | 'CREDIT_CARD' | 'SSN' | 'BANK_ACCOUNT' | 'UPI' | 'AADHAAR' | 'CVV' | 'PASSPORT';
+  maskedValue: string;
+  rawFragment: string;
+  index: number;
+}
+
+export function extractSensitiveTokens(text: string | null | undefined): DetectedSensitiveItem[] {
+  if (!text || text.trim() === '') return [];
+  const items: DetectedSensitiveItem[] = [];
+
+  // OTP detection
+  const otpMatches = Array.from(text.matchAll(/\b(?:otp|code|pin|passcode|token|verification)\s*(?:is|:)?\s*(\d{4,8})\b/gi));
+  for (const m of otpMatches) {
+    if (m[1]) {
+      items.push({
+        type: 'OTP',
+        maskedValue: `[OTP: ***${m[1].slice(-2)}]`,
+        rawFragment: m[1],
+        index: m.index ?? 0
+      });
+    }
+  }
+
+  // Credit card detection
+  const ccMatches = Array.from(text.matchAll(CREDIT_CARD_REGEX));
+  for (const m of ccMatches) {
+    const clean = m[0].replace(/[\s\-]/g, '');
+    items.push({
+      type: 'CREDIT_CARD',
+      maskedValue: `${clean.slice(0, 4)} **** **** ${clean.slice(-4)}`,
+      rawFragment: m[0],
+      index: m.index ?? 0
+    });
+  }
+
+  // SSN detection
+  const ssnMatches = Array.from(text.matchAll(SSN_REGEX));
+  for (const m of ssnMatches) {
+    items.push({
+      type: 'SSN',
+      maskedValue: '[REDACTED_SSN]',
+      rawFragment: m[0],
+      index: m.index ?? 0
+    });
+  }
+
+  return items;
+}
+
 export function maskSensitiveText(text: string | null | undefined): string {
   if (!text || text.trim() === '') return text || '';
 

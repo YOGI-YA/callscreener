@@ -74,6 +74,14 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
   const [aiVoicePersona, setAiVoicePersona] = useState<'female' | 'male' | 'natural'>('female');
   const [screeningMode, setScreeningMode] = useState<'AI_ASSISTANT' | 'PERSONAL_VOICEMAIL'>('AI_ASSISTANT');
   const [voicemailState, setVoicemailState] = useState<'IDLE' | 'GREETING_PLAYING' | 'RECORDING_CALLER_MESSAGE'>('IDLE');
+  const [copiedLiveOtp, setCopiedLiveOtp] = useState<boolean>(false);
+
+  // Extract detected OTPs or verification codes live during call screening
+  const liveOtpMatch = React.useMemo(() => {
+    const combined = [callerStreamText, ...dialogue.map((d) => d.text)].join(' ');
+    const match = combined.match(/\b(?:otp|code|pin|passcode|token|verification)\s*(?:is|:)?\s*(\d{4,8})\b/i);
+    return match ? match[1] : null;
+  }, [callerStreamText, dialogue]);
 
   const dialogueEndRef = useRef<HTMLDivElement>(null);
 
@@ -1357,6 +1365,50 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
 
             <div ref={dialogueEndRef} />
           </div>
+
+          {/* Real-time In-Call OTP Detection Pill */}
+          {liveOtpMatch && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-md)',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(56, 189, 248, 0.2) 100%)',
+                border: '1px solid rgba(56, 189, 248, 0.5)',
+                boxShadow: '0 0 16px rgba(56, 189, 248, 0.25)',
+                flexShrink: 0
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '0.85rem' }}>🔐</span>
+                <span style={{ fontSize: '0.78rem', color: '#e2e8f0', fontWeight: 700 }}>
+                  Caller Stated OTP: <strong style={{ color: '#38bdf8', letterSpacing: '0.08em' }}>{liveOtpMatch}</strong>
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(liveOtpMatch);
+                  CapacitorService.triggerHapticFeedback();
+                  setCopiedLiveOtp(true);
+                  setTimeout(() => setCopiedLiveOtp(false), 2000);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  background: copiedLiveOtp ? 'var(--color-safe)' : 'var(--accent-glow)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-sm)',
+                  color: '#0f172a',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                {copiedLiveOtp ? '✓ Copied' : 'Copy OTP'}
+              </button>
+            </div>
+          )}
 
           {/* Live Intent Assessment Banner */}
           {liveAssessment && (

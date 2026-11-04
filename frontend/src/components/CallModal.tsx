@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   X, ShieldCheck, ShieldAlert, ShieldX, Clock, Cpu, FileText,
   CheckCircle2, ShieldBan, ShieldPlus, Eye, EyeOff, Lock,
-  AlertTriangle, MessageSquare, Activity
+  AlertTriangle, MessageSquare, Activity, Copy
 } from 'lucide-react';
 import { ScreeningResult, ScreeningVerdict } from '../types';
 import { RiskBadge, StirShakenBadge, AcousticBotBadge } from './RiskBadge';
@@ -29,6 +29,7 @@ const maskSensitiveText = (text: string): string => {
 
 export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule }) => {
   const [maskPii, setMaskPii] = useState<boolean>(true);
+  const [copiedOtp, setCopiedOtp] = useState<boolean>(false);
 
   if (!log) return null;
 
@@ -36,6 +37,14 @@ export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule })
   const keywords = log.metadata?.detectedKeywords ?? [];
   const displayRationale = maskPii ? maskSensitiveText(log.rationale) : log.rationale;
   const displayCallerName = maskPii ? maskSensitiveText(log.callerName) : log.callerName;
+
+  // Extract detected OTPs or verification codes
+  const allText = [
+    log.rationale || '',
+    ...(log.dialogueTurns || []).map((t) => t.text)
+  ].join(' ');
+  const otpMatch = allText.match(/\b(?:otp|code|pin|passcode|token|verification)\s*(?:is|:)?\s*(\d{4,8})\b/i);
+  const detectedOtp = otpMatch ? otpMatch[1] : null;
 
   return (
     <div
@@ -208,6 +217,78 @@ export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule })
             {displayRationale}
           </p>
         </div>
+
+        {/* Real OTP & Verification Access Card */}
+        {detectedOtp && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.16) 0%, rgba(56, 189, 248, 0.12) 100%)',
+              border: '1px solid rgba(99, 102, 241, 0.45)',
+              borderRadius: 'var(--radius-md)',
+              padding: '12px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10
+            }}
+          >
+            <div>
+              <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Lock size={12} />
+                <span>Detected Call Verification / OTP</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.2rem', fontWeight: 800, color: '#fff', letterSpacing: '0.12em', marginTop: 4 }}>
+                {maskPii ? `•••• ${detectedOtp.slice(-2)}` : detectedOtp}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => setMaskPii(!maskPii)}
+                style={{
+                  padding: '6px 10px',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid var(--border-medium)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  cursor: 'pointer'
+                }}
+              >
+                {maskPii ? <Eye size={13} /> : <EyeOff size={13} />}
+                <span>{maskPii ? 'Reveal' : 'Hide'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(detectedOtp);
+                  setCopiedOtp(true);
+                  setTimeout(() => setCopiedOtp(false), 2000);
+                }}
+                style={{
+                  padding: '6px 12px',
+                  background: copiedOtp ? 'var(--color-safe)' : 'var(--accent-gradient)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-sm)',
+                  color: '#fff',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  cursor: 'pointer'
+                }}
+              >
+                {copiedOtp ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                <span>{copiedOtp ? 'Copied' : 'Copy OTP'}</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Extreme Feature: Interactive Voicemail Audio Player & Scrubbing */}
         <VoicemailAudioPlayer
