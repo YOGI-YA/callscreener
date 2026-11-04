@@ -317,6 +317,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
           ]);
 
           if (incomingCall.simulatedAudioTranscript) {
+            setIsCallerSpeaking(true);
             const words = incomingCall.simulatedAudioTranscript.trim().split(/\s+/);
             let wordIdx = 0;
             let accumulated = '';
@@ -340,6 +341,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
                 handleProcessCallerUtterance(accumulated);
               }
             }, 150);
+          } else {
+            setIsCallerSpeaking(false);
           }
         }, 3200);
       }
@@ -367,9 +370,9 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     // After AI finishes greeting, trigger caller simulation if transcript provided
     setTimeout(() => {
       setIsAiSpeaking(false);
-      setIsCallerSpeaking(true);
 
       if (incomingCall.simulatedAudioTranscript) {
+        setIsCallerSpeaking(true);
         const words = incomingCall.simulatedAudioTranscript.trim().split(/\s+/);
         let wordIdx = 0;
         let accumulated = '';
@@ -393,6 +396,8 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
             handleProcessCallerUtterance(accumulated);
           }
         }, 150);
+      } else {
+        setIsCallerSpeaking(false);
       }
     }, 2800);
   };
@@ -497,8 +502,22 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
         setDynamicChips(turn.suggestedSmartReplies);
       }
       setIsAiThinking(false);
-    } catch {
+    } catch (err) {
+      console.warn('AI chat turn error, falling back to local heuristic intent:', err);
       setIsAiThinking(false);
+      // Heuristic fallback for offline / latency resiliency
+      const lower = callerText.toLowerCase();
+      const isUrgentSpam = /(otp|credit card|cvv|bank account|irs|customs|arrest|urgent|wire transfer)/i.test(lower);
+      setLiveAssessment({
+        category: isUrgentSpam ? 'HIGH_RISK_FINANCIAL_FRAUD' : 'GENERAL_INQUIRY',
+        riskScore: isUrgentSpam ? 88 : 20,
+        verdict: isUrgentSpam ? 'BLOCK' : 'ALLOW'
+      });
+      setDynamicChips(
+        isUrgentSpam
+          ? ['Please do not call this number again.', 'I will report this call to the authorities.', 'Send details in writing.']
+          : ['Could you please email the details?', 'The recipient is currently unavailable.', 'I will pass along your message.']
+      );
     }
   };
 
