@@ -87,6 +87,198 @@ function nameToT9(name: string): string {
   return name.toLowerCase().split('').map((char) => LETTER_TO_T9[char] || '').join('');
 }
 
+const ContactRow = React.memo<{
+  contact: Contact;
+  onCall: (number: string, name?: string) => void;
+  onAiScreen: (number: string, name: string) => void;
+}>(({ contact, onCall, onAiScreen }) => (
+  <div
+    onClick={() => onCall(contact.number, contact.name)}
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      padding: '12px 16px',
+      borderBottom: '1px solid var(--border-subtle)',
+      gap: 12,
+      cursor: 'pointer',
+      userSelect: 'none'
+    }}
+  >
+    <div
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: '50%',
+        background: avatarColor(contact.name),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 700,
+        fontSize: '0.9rem',
+        color: '#fff',
+        flexShrink: 0,
+      }}
+    >
+      {getInitials(contact.name)}
+    </div>
+
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {contact.name}
+      </div>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+        {contact.number}
+      </div>
+    </div>
+
+    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onAiScreen(contact.number, contact.name);
+        }}
+        style={{
+          padding: '6px',
+          background: 'rgba(99, 102, 241, 0.15)',
+          border: '1px solid rgba(99, 102, 241, 0.3)',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        title="Screen Call with AI"
+      >
+        <Sparkles size={14} color="var(--accent-glow)" />
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onCall(contact.number, contact.name);
+        }}
+        style={{
+          padding: '6px',
+          background: 'rgba(16, 185, 129, 0.15)',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Phone size={14} color="var(--color-safe)" />
+      </button>
+    </div>
+  </div>
+));
+
+const CallHistoryRow = React.memo<{
+  call: DeviceCall;
+  onCall: (number: string, name?: string) => void;
+  onAiScreen: (number: string, name: string) => void;
+  onDelete: (e: React.MouseEvent, call: DeviceCall) => void;
+}>(({ call, onCall, onAiScreen, onDelete }) => {
+  const CallIcon =
+    call.type === 'INCOMING' ? PhoneIncoming :
+    call.type === 'OUTGOING' ? PhoneOutgoing :
+    call.type === 'MISSED' || call.type === 'REJECTED' ? PhoneMissed :
+    Phone;
+  const callColor =
+    call.type === 'MISSED' || call.type === 'REJECTED' ? 'var(--color-danger)' :
+    call.type === 'INCOMING' ? 'var(--color-safe)' : 'var(--accent-glow)';
+  const displayName = call.name || call.number;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        padding: '12px 16px',
+        borderBottom: '1px solid var(--border-subtle)',
+        gap: 12,
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          background: call.name ? avatarColor(call.name) : 'rgba(255,255,255,0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 700,
+          fontSize: '0.9rem',
+          color: '#fff',
+          flexShrink: 0,
+        }}
+      >
+        {call.name ? getInitials(call.name) : <User size={18} />}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: callColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {displayName}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+          <CallIcon size={12} color={callColor} />
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            {call.type.charAt(0) + call.type.slice(1).toLowerCase()} • {formatDate(call.date)}
+            {call.duration > 0 && ` • ${formatDuration(call.duration)}`}
+          </span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+        <button
+          onClick={() => onAiScreen(call.number, call.name)}
+          style={{
+            padding: '6px',
+            background: 'rgba(99, 102, 241, 0.15)',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title="Screen Call with AI"
+        >
+          <Sparkles size={14} color="var(--accent-glow)" />
+        </button>
+        <button
+          onClick={() => onCall(call.number, call.name)}
+          style={{
+            padding: '6px',
+            background: 'rgba(16, 185, 129, 0.15)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title="Call"
+        >
+          <Phone size={14} color="var(--color-safe)" />
+        </button>
+        <button
+          onClick={(e) => onDelete(e, call)}
+          style={{
+            padding: '6px',
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title="Remove from history"
+        >
+          <Delete size={14} color="var(--color-danger)" />
+        </button>
+      </div>
+    </div>
+  );
+});
+
 export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onOutgoingCall }) => {
   const [section, setSection] = useState<DialerSection>('recent');
   const [dialNumber, setDialNumber] = useState('');
@@ -289,112 +481,15 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
                 <div style={{ fontSize: '0.75rem', marginTop: 4 }}>Your calls will appear here</div>
               </div>
             ) : (
-              filteredCallLog.map((call, idx) => {
-                const CallIcon =
-                  call.type === 'INCOMING' ? PhoneIncoming :
-                  call.type === 'OUTGOING' ? PhoneOutgoing :
-                  call.type === 'MISSED' || call.type === 'REJECTED' ? PhoneMissed :
-                  Phone;
-                const callColor =
-                  call.type === 'MISSED' || call.type === 'REJECTED' ? 'var(--color-danger)' :
-                  call.type === 'INCOMING' ? 'var(--color-safe)' : 'var(--accent-glow)';
-                const displayName = call.name || call.number;
-
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '12px 16px',
-                      borderBottom: '1px solid var(--border-subtle)',
-                      gap: 12,
-                    }}
-                  >
-                    {/* Avatar */}
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: '50%',
-                        background: call.name ? avatarColor(call.name) : 'rgba(255,255,255,0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        fontSize: '0.9rem',
-                        color: '#fff',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {call.name ? getInitials(call.name) : <User size={18} />}
-                    </div>
-
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: callColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {displayName}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                        <CallIcon size={12} color={callColor} />
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          {call.type.charAt(0) + call.type.slice(1).toLowerCase()} • {formatDate(call.date)}
-                          {call.duration > 0 && ` • ${formatDuration(call.duration)}`}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Buttons */}
-                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                      <button
-                        onClick={() => handleAiScreen(call.number, call.name)}
-                        style={{
-                          padding: '6px',
-                          background: 'rgba(99, 102, 241, 0.15)',
-                          border: '1px solid rgba(99, 102, 241, 0.3)',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        title="Screen Call with AI"
-                      >
-                        <Sparkles size={14} color="var(--accent-glow)" />
-                      </button>
-                      <button
-                        onClick={() => handleCall(call.number, call.name)}
-                        style={{
-                          padding: '6px',
-                          background: 'rgba(16, 185, 129, 0.15)',
-                          border: '1px solid rgba(16, 185, 129, 0.3)',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        title="Call"
-                      >
-                        <Phone size={14} color="var(--color-safe)" />
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteCall(e, call)}
-                        style={{
-                          padding: '6px',
-                          background: 'rgba(239, 68, 68, 0.12)',
-                          border: '1px solid rgba(239, 68, 68, 0.25)',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        title="Remove from history"
-                      >
-                        <Delete size={14} color="var(--color-danger)" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
+              filteredCallLog.map((call) => (
+                <CallHistoryRow
+                  key={`${call.number}-${call.date}`}
+                  call={call}
+                  onCall={handleCall}
+                  onAiScreen={handleAiScreen}
+                  onDelete={handleDeleteCall}
+                />
+              ))
             )}
           </div>
         )}
@@ -414,84 +509,12 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
               </div>
             ) : (
               filteredContacts.map((contact) => (
-                <div
+                <ContactRow
                   key={contact.id}
-                  onClick={() => handleCall(contact.number, contact.name)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '12px 16px',
-                    borderBottom: '1px solid var(--border-subtle)',
-                    gap: 12,
-                    cursor: 'pointer',
-                    userSelect: 'none'
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: '50%',
-                      background: avatarColor(contact.name),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 700,
-                      fontSize: '0.9rem',
-                      color: '#fff',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {getInitials(contact.name)}
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {contact.name}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                      {contact.number}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAiScreen(contact.number, contact.name);
-                      }}
-                      style={{
-                        padding: '6px',
-                        background: 'rgba(99, 102, 241, 0.15)',
-                        border: '1px solid rgba(99, 102, 241, 0.3)',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                      title="Screen Call with AI"
-                    >
-                      <Sparkles size={14} color="var(--accent-glow)" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCall(contact.number, contact.name);
-                      }}
-                      style={{
-                        padding: '6px',
-                        background: 'rgba(16, 185, 129, 0.15)',
-                        border: '1px solid rgba(16, 185, 129, 0.3)',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Phone size={14} color="var(--color-safe)" />
-                    </button>
-                  </div>
-                </div>
+                  contact={contact}
+                  onCall={handleCall}
+                  onAiScreen={handleAiScreen}
+                />
               ))
             )}
           </div>
