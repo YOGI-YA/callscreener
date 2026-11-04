@@ -260,7 +260,7 @@ export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule })
                 }}
               >
                 {maskPii ? <Eye size={13} /> : <EyeOff size={13} />}
-                <span>{maskPii ? 'Reveal' : 'Hide'}</span>
+                <span>{maskPii ? 'Reveal OTP' : 'Hide OTP'}</span>
               </button>
 
               <button
@@ -352,7 +352,7 @@ export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule })
           <div style={{ background: 'rgba(255,255,255,0.03)', padding: 8, borderRadius: 'var(--radius-sm)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Telecom Response:</span>
             <div style={{ fontWeight: 600, marginTop: 2 }}>
-              {log.suggestedActions.disallowCall ? 'Disallowed' : log.suggestedActions.silenceCall ? 'Silenced' : 'Allowed'}
+              {log.suggestedActions?.disallowCall ? 'Disallowed' : log.suggestedActions?.silenceCall ? 'Silenced' : 'Allowed'}
             </div>
           </div>
         </div>
