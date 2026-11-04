@@ -78,6 +78,14 @@ export const App: React.FC = () => {
               initialPhase: cur.isScreeningActive ? 'SCREENING' : cur.callState === 'ACTIVE' ? 'CONNECTED' : 'RINGING'
             };
           });
+        } else {
+          // If native device reports no active call, auto-clear live call overlay if not a manual test simulation
+          setIncomingCall((prev) => {
+            if (prev && !prev.simulatedAudioTranscript) {
+              return null;
+            }
+            return prev;
+          });
         }
       } catch (e) {
         console.warn('Error syncing active call:', e);
