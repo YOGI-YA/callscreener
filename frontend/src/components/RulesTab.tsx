@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Plus, Trash2, CheckCircle2, ShieldBan, ShieldAlert, Sparkles } from 'lucide-react';
+import { Shield, Plus, Trash2, CheckCircle2, ShieldBan, ShieldAlert, Sparkles, AlertCircle, AlertTriangle } from 'lucide-react';
 import { ScreeningRule, ScreeningVerdict } from '../types';
 
 interface RulesTabProps {
@@ -48,9 +48,27 @@ export const RulesTab: React.FC<RulesTabProps> = ({ rules, onAddRule, onDeleteRu
     });
   }, [testInput, rules]);
 
+  const patternValidation = React.useMemo(() => {
+    if (!pattern.trim()) return { valid: true, error: null, warning: null };
+    try {
+      new RegExp(pattern);
+      const duplicate = rules.find((r) => r.pattern.toLowerCase() === pattern.trim().toLowerCase());
+      if (duplicate) {
+        return {
+          valid: true,
+          error: null,
+          warning: `Pattern already matches rule "${duplicate.description}" (${duplicate.action})`
+        };
+      }
+      return { valid: true, error: null, warning: null };
+    } catch (e: any) {
+      return { valid: false, error: e.message || 'Invalid regular expression syntax', warning: null };
+    }
+  }, [pattern, rules]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pattern.trim() || !description.trim()) return;
+    if (!pattern.trim() || !description.trim() || !patternValidation.valid) return;
 
     onAddRule({
       type: ruleType,
@@ -136,12 +154,30 @@ export const RulesTab: React.FC<RulesTabProps> = ({ rules, onAddRule, onDeleteRu
                 width: '100%',
                 padding: '8px 12px',
                 background: 'rgba(0,0,0,0.3)',
-                border: '1px solid var(--border-medium)',
+                border: `1px solid ${patternValidation.error ? 'var(--color-danger)' : patternValidation.warning ? 'var(--color-warning)' : 'var(--border-medium)'}`,
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '0.85rem',
                 fontFamily: 'var(--font-mono)'
               }}
             />
+            {patternValidation.error && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-danger)', fontSize: '0.72rem', marginTop: 4 }}>
+                <AlertCircle size={13} />
+                <span>{patternValidation.error}</span>
+              </div>
+            )}
+            {patternValidation.warning && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-warning)', fontSize: '0.72rem', marginTop: 4 }}>
+                <AlertTriangle size={13} />
+                <span>{patternValidation.warning}</span>
+              </div>
+            )}
+            {pattern.trim() && patternValidation.valid && !patternValidation.warning && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-safe)', fontSize: '0.72rem', marginTop: 4 }}>
+                <CheckCircle2 size={13} />
+                <span>Valid regex / number pattern</span>
+              </div>
+            )}
           </div>
 
           <div>
