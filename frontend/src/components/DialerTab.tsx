@@ -472,7 +472,21 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
 
         {/* ========== KEYPAD ========== */}
         {section === 'keypad' && (
-          <div style={{ padding: '16px 20px 12px', display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
+          <div
+            className="dialer-keypad-container"
+            style={{
+              padding: '10px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: 10,
+              flex: 1,
+              minHeight: 0,
+              maxWidth: 420,
+              margin: '0 auto',
+              width: '100%'
+            }}
+          >
             {/* Display */}
             <div
               style={{
@@ -643,64 +657,53 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr 1fr',
-                gap: 10,
+                gap: 8,
+                flex: 1,
+                alignContent: 'center'
               }}
             >
               {KEYS.map(([digit, letters]) => (
                 <button
                   key={digit}
+                  className="dialpad-key"
                   aria-label={letters ? `Dial ${digit}, ${letters}` : `Dial ${digit}`}
                   onMouseDown={() => handleDial(digit)}
-                  style={{
-                    padding: '14px 0',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid var(--border-medium)',
-                    borderRadius: 'var(--radius-md)',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 1,
-                    transition: 'background 0.1s, transform 0.1s',
-                    userSelect: 'none',
-                  }}
                 >
-                  <span style={{ fontSize: '1.35rem', fontWeight: 600, lineHeight: 1 }}>{digit}</span>
-                  {letters && <span style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>{letters}</span>}
+                  <span style={{ fontSize: '1.3rem', fontWeight: 600, lineHeight: 1 }}>{digit}</span>
+                  {letters && <span style={{ fontSize: '0.52rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>{letters}</span>}
                 </button>
               ))}
             </div>
 
             {/* Call Button Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12, alignItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 10, alignItems: 'center', marginTop: 2, flexShrink: 0 }}>
               <div />
               <button
                 onClick={() => handleCall(dialNumber)}
                 disabled={!dialNumber}
                 aria-label="Initiate Phone Call"
                 style={{
-                  width: 68,
-                  height: 68,
+                  width: 60,
+                  height: 60,
                   borderRadius: '50%',
                   background: dialNumber ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'rgba(255,255,255,0.1)',
                   border: 'none',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: dialNumber ? '0 0 24px rgba(16, 185, 129, 0.5)' : 'none',
+                  boxShadow: dialNumber ? '0 0 20px rgba(16, 185, 129, 0.5)' : 'none',
                   cursor: dialNumber ? 'pointer' : 'not-allowed',
                   transition: 'all 0.2s',
                 }}
               >
-                <Phone size={28} color="#fff" />
+                <Phone size={26} color="#fff" />
               </button>
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 {dialNumber && (
                   <button
                     onClick={() => handleAiScreen(dialNumber, '')}
                     style={{
-                      padding: '10px',
+                      padding: '8px',
                       background: 'rgba(99, 102, 241, 0.15)',
                       border: '1px solid rgba(99, 102, 241, 0.3)',
                       borderRadius: '50%',
@@ -710,7 +713,7 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
                     }}
                     title="Screen Call with AI"
                   >
-                    <Sparkles size={20} color="var(--accent-glow)" />
+                    <Sparkles size={18} color="var(--accent-glow)" />
                   </button>
                 )}
               </div>
