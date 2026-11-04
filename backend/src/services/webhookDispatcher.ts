@@ -83,11 +83,32 @@ export class WebhookDispatcher {
     return this.webhooks.length < init;
   }
 
+  public static clearWebhooks(): void {
+    this.webhooks = [];
+  }
+
   /**
    * Computes HMAC SHA256 signature for webhook payload
    */
   public static computeSignature(payload: string, secretKey: string): string {
     return crypto.createHmac('sha256', secretKey).update(payload).digest('hex');
+  }
+
+  /**
+   * Verifies an incoming HMAC SHA-256 signature against expected payload and secret.
+   * Uses crypto.timingSafeEqual to prevent side-channel timing attacks.
+   */
+  public static verifySignature(payload: string, signature: string, secretKey: string): boolean {
+    if (!payload || !signature || !secretKey) return false;
+    try {
+      const expected = this.computeSignature(payload, secretKey);
+      const expectedBuf = Buffer.from(expected, 'hex');
+      const signatureBuf = Buffer.from(signature, 'hex');
+      if (expectedBuf.length !== signatureBuf.length) return false;
+      return crypto.timingSafeEqual(expectedBuf, signatureBuf);
+    } catch {
+      return false;
+    }
   }
 
   /**
