@@ -1,5 +1,6 @@
 import React from 'react';
 import { LayoutDashboard, Phone, History, Shield, Settings } from 'lucide-react';
+import { CapacitorService } from '../services/capacitorService';
 
 export type TabId = 'dashboard' | 'dialer' | 'logs' | 'rules' | 'settings';
 
@@ -28,7 +29,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, unreadCo
             key={tab.id}
             id={`nav-btn-${tab.id}`}
             className={`nav-tab-btn ${isActive ? 'active' : ''}`}
-            onClick={() => onSelectTab(tab.id)}
+            onClick={() => {
+              CapacitorService.triggerHapticFeedback();
+              onSelectTab(tab.id);
+            }}
           >
             <div className="nav-icon-wrap" style={{ position: 'relative' }}>
               <Icon size={20} />

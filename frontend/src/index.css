@@ -898,7 +898,7 @@ input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 10px 14px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
   background: var(--bg-dock);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -907,6 +907,8 @@ input, select, textarea {
   position: sticky;
   bottom: 0;
   z-index: 30;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .nav-tab-btn {
@@ -914,20 +916,27 @@ input, select, textarea {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: 3px;
+  padding: 6px 12px;
+  min-height: 48px;
+  min-width: 48px;
   color: var(--text-secondary);
   border-radius: var(--radius-md);
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  touch-action: manipulation;
 }
 
 .nav-tab-btn:hover {
   color: var(--text-primary);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+}
+
+.nav-tab-btn:active {
+  transform: scale(0.92);
 }
 
 .nav-tab-btn.active {
