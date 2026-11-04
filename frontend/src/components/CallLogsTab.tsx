@@ -33,6 +33,7 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
   const [recordings, setRecordings] = useState<RecordedCallItem[]>([]);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioNotice, setAudioNotice] = useState<string | null>(null);
+  const [confirmDeletePath, setConfirmDeletePath] = useState<string | null>(null);
 
   const loadRecordings = React.useCallback(async () => {
     try {
@@ -65,7 +66,8 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
     const res = await CapacitorService.deleteRecordedCall(filePath);
     if (res.success) {
       setRecordings((prev) => prev.filter((r) => r.filePath !== filePath));
-      setAudioNotice('Recording deleted');
+      setAudioNotice('Recording permanently deleted');
+      setConfirmDeletePath(null);
       setTimeout(() => setAudioNotice(null), 2500);
     }
   };
@@ -745,13 +747,47 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
                           <Mail size={11} className={emailingId === rec.id ? 'spin' : ''} />
                           <span>{emailingId === rec.id ? 'Sending...' : 'Email Audio'}</span>
                         </button>
-                        <button
-                          onClick={() => handleDeleteRecording(rec.filePath)}
-                          style={{ color: 'var(--color-danger)', padding: 4 }}
-                          title="Delete recording"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {confirmDeletePath === rec.filePath ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <button
+                              onClick={() => handleDeleteRecording(rec.filePath)}
+                              style={{
+                                padding: '2px 8px',
+                                borderRadius: 'var(--radius-sm)',
+                                background: 'var(--color-danger)',
+                                color: '#fff',
+                                fontSize: '0.68rem',
+                                fontWeight: 700
+                              }}
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeletePath(null)}
+                              style={{
+                                padding: '2px 6px',
+                                borderRadius: 'var(--radius-sm)',
+                                background: 'rgba(255,255,255,0.1)',
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.68rem'
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              CapacitorService.triggerHapticFeedback();
+                              setConfirmDeletePath(rec.filePath);
+                            }}
+                            style={{ color: 'var(--color-danger)', padding: 4 }}
+                            title="Delete recording"
+                            aria-label="Delete recording"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
