@@ -519,7 +519,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       setLiveAssessment({
         category: isUrgentSpam ? 'HIGH_RISK_FINANCIAL_FRAUD' : 'GENERAL_INQUIRY',
         riskScore: isUrgentSpam ? 88 : 20,
-        verdict: isUrgentSpam ? 'BLOCK' : 'ALLOW'
+        verdict: isUrgentSpam ? 'REJECT' : 'ALLOW'
       });
       setDynamicChips(
         isUrgentSpam

@@ -91,12 +91,21 @@ describe('Mobile Viewport & In-Call Screening Overlay Tests', () => {
       phoneNumber: '+1-555-123-4567',
       callerName: 'Chase Verification',
       riskScore: 78,
-      riskLevel: 'HIGH_SPAM',
-      verdict: 'WARN',
-      category: 'FINANCIAL_FRAUD',
+      riskLevel: 'CRITICAL_SPAM',
+      verdict: 'REJECT',
+      category: 'PHISHING_SCAM',
+      confidence: 0.92,
+      latencyMs: 140,
       rationale: 'Caller requested confirmation of OTP 773821 to cancel transaction.',
-      timestamp: Date.now(),
-      engine: 'FAST_HEURISTIC'
+      timestamp: new Date().toISOString(),
+      engine: 'FAST_LOCAL_FALLBACK',
+      suggestedActions: {
+        disallowCall: true,
+        silenceCall: false,
+        rejectCall: true,
+        skipCallLog: false,
+        skipNotification: false
+      }
     };
 
     render(
