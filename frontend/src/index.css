@@ -86,12 +86,21 @@ body.theme-cyberpunk-neon {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   font-family: var(--font-main);
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior-y: none;
   background-image: 
     radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 60%),
     radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 50%);
@@ -140,15 +149,24 @@ input, select, textarea {
 .app-viewport-container {
   display: flex;
   justify-content: center;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
   padding: 0;
+  overflow: hidden;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (min-width: 640px) {
+  html, body {
+    overflow-y: auto;
+  }
   .app-viewport-container {
+    height: auto;
+    min-height: 100vh;
+    max-height: none;
     padding: 16px;
+    overflow-y: visible;
   }
 }
 
@@ -161,8 +179,9 @@ input, select, textarea {
 .mobile-device-frame {
   width: 100%;
   max-width: 480px;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
   background-color: var(--bg-surface);
   display: flex;
   flex-direction: column;
@@ -175,6 +194,7 @@ input, select, textarea {
 /* Standalone phone preview frame on desktop */
 @media (min-width: 640px) {
   .mobile-device-frame:not(.wide-layout) {
+    height: auto;
     min-height: 844px;
     max-height: 920px;
     border-radius: 36px;
@@ -261,6 +281,8 @@ input, select, textarea {
 .app-content {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   padding: 16px;
   display: flex;
   flex-direction: column;
