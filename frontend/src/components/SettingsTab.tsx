@@ -347,6 +347,47 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* High-priority Battery Longevity Status Warning Banner */}
+      {!batteryIgnored && (
+        <div
+          className="glass-card"
+          style={{
+            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(239, 68, 68, 0.12) 100%)',
+            border: '1px solid rgba(245, 158, 11, 0.45)',
+            padding: '12px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Zap size={20} color="#f59e0b" style={{ flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#fff' }}>
+                Battery Optimization Restricting 24/7 Standby
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                Android may pause background screening after extended inactivity.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleRequestBatteryExemption}
+            className="btn-primary"
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Fix Now
+          </button>
+        </div>
+      )}
+
       {/* Settings Header */}
       <div className="glass-card" style={{ border: '1px solid var(--border-glow)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
