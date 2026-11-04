@@ -24,6 +24,41 @@ export class AcousticBotDetector {
   }
 
   /**
+   * Computes Root Mean Square (RMS) dBFS energy from raw PCM 16-bit audio buffers.
+   * Hardened against zero-length buffers, pure digital silence, and NaN values.
+   */
+  public static calculateRmsDbfs(pcmBuffer: Buffer | Int16Array | null | undefined): number {
+    if (!pcmBuffer || pcmBuffer.length === 0) return -96; // Safe noise floor
+    let sumSquares = 0;
+    let sampleCount = 0;
+
+    if (Buffer.isBuffer(pcmBuffer)) {
+      sampleCount = Math.floor(pcmBuffer.length / 2);
+      if (sampleCount === 0) return -96;
+      for (let i = 0; i < sampleCount; i++) {
+        const sample = pcmBuffer.readInt16LE(i * 2) / 32768.0;
+        sumSquares += sample * sample;
+      }
+    } else {
+      sampleCount = pcmBuffer.length;
+      if (sampleCount === 0) return -96;
+      for (let i = 0; i < sampleCount; i++) {
+        const sample = pcmBuffer[i] / 32768.0;
+        sumSquares += sample * sample;
+      }
+    }
+
+    const meanSquare = sumSquares / sampleCount;
+    if (!Number.isFinite(meanSquare) || meanSquare <= 1e-10) {
+      return -96; // Safe acoustic silence floor
+    }
+
+    const rms = Math.sqrt(meanSquare);
+    const dbfs = 20 * Math.log10(rms);
+    return Number.isFinite(dbfs) ? Math.max(-96, Math.min(0, Math.round(dbfs * 10) / 10)) : -96;
+  }
+
+  /**
    * Evaluates acoustic anomaly metrics and soundboard robotic signatures
    */
   public static analyzeAcousticTelemetry(
@@ -44,7 +79,9 @@ export class AcousticBotDetector {
     const uniqueWords = new Set(words.map((w) => w.toLowerCase()));
     const repetitionRatio = words.length > 5 ? 1 - (uniqueWords.size / words.length) : 0;
 
-    const jitterMs = options?.jitterMs ?? (patternMatches > 0 ? 3 : 24); // synthetic soundboards have near-0 jitter (<5ms)
+    const jitterMs = Number.isFinite(options?.jitterMs) && options!.jitterMs! >= 0
+      ? options!.jitterMs!
+      : (patternMatches > 0 ? 3 : 24); // synthetic soundboards have near-0 jitter (<5ms)
     const isUnnaturallyFlat = jitterMs < 8 && words.length > 6;
 
     let roboticCadenceScore = 0;
