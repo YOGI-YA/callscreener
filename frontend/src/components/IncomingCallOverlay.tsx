@@ -615,14 +615,20 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
+        width: '100%',
+        height: '100dvh',
+        maxHeight: '100dvh',
         zIndex: 99999,
         background: 'radial-gradient(ellipse at 50% 10%, #0c1527 0%, #040711 100%)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: '20px 18px',
+        padding: '16px 16px env(safe-area-inset-bottom, 16px)',
         color: '#fff',
-        fontFamily: 'var(--font-main)'
+        fontFamily: 'var(--font-main)',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehaviorY: 'contain'
       }}
     >
       {/* ────────────────────────────────────────────────────────────────
@@ -976,7 +982,7 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 'auto', flexShrink: 0 }}>
             {/* 1. HERO BUTTON: Screen with AI or My Voice */}
             <button
               onClick={handleStartAiScreening}
@@ -1421,7 +1427,21 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
           </div>
 
           {/* Primary Action Buttons: Take Over (Pick Up) / Decline Call */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, marginTop: 4, flexShrink: 0 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 2fr',
+              gap: 10,
+              marginTop: 'auto',
+              flexShrink: 0,
+              position: 'sticky',
+              bottom: 0,
+              background: 'linear-gradient(to top, rgba(4,7,17,0.95) 75%, transparent 100%)',
+              paddingTop: 8,
+              paddingBottom: 4,
+              zIndex: 10
+            }}
+          >
             <button
               onClick={handleHangUp}
               className="btn-danger"
