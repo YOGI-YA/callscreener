@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, PhoneOff,
   Search, User, Clock, ChevronRight, Delete, Mic, Sparkles, Activity
@@ -93,8 +93,16 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [callLog, setCallLog] = useState<DeviceCall[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMicAcousticCheck, setIsMicAcousticCheck] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -152,27 +160,37 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
     } catch {}
   };
 
-  const t9Suggestions = dialNumber
-    ? contacts.filter((c) => {
-        const cleanNumber = c.number.replace(/\D/g, '');
-        const cleanDial = dialNumber.replace(/\D/g, '');
-        if (cleanDial && cleanNumber.includes(cleanDial)) return true;
-        const t9 = nameToT9(c.name);
-        return cleanDial && t9.includes(cleanDial);
-      }).slice(0, 3)
-    : [];
+  const t9Suggestions = useMemo(() => {
+    if (!dialNumber) return [];
+    const cleanDial = dialNumber.replace(/\D/g, '');
+    if (!cleanDial) return [];
+    return contacts.filter((c) => {
+      const cleanNumber = c.number.replace(/\D/g, '');
+      if (cleanNumber.includes(cleanDial)) return true;
+      const t9 = nameToT9(c.name);
+      return t9.includes(cleanDial);
+    }).slice(0, 3);
+  }, [dialNumber, contacts]);
 
-  const filteredContacts = contacts.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.number.includes(searchQuery)
-  );
+  const filteredContacts = useMemo(() => {
+    const q = debouncedSearchQuery.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.number.includes(q)
+    );
+  }, [contacts, debouncedSearchQuery]);
 
-  const filteredCallLog = callLog.filter(
-    (c) =>
-      (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.number.includes(searchQuery)
-  );
+  const filteredCallLog = useMemo(() => {
+    const q = debouncedSearchQuery.trim().toLowerCase();
+    if (!q) return callLog;
+    return callLog.filter(
+      (c) =>
+        (c.name || '').toLowerCase().includes(q) ||
+        c.number.includes(q)
+    );
+  }, [callLog, debouncedSearchQuery]);
 
   const KEYS = [
     ['1', ''], ['2', 'ABC'], ['3', 'DEF'],
@@ -398,12 +416,15 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
               filteredContacts.map((contact) => (
                 <div
                   key={contact.id}
+                  onClick={() => handleCall(contact.number, contact.name)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     padding: '12px 16px',
                     borderBottom: '1px solid var(--border-subtle)',
                     gap: 12,
+                    cursor: 'pointer',
+                    userSelect: 'none'
                   }}
                 >
                   <div
@@ -435,7 +456,10 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
 
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                     <button
-                      onClick={() => handleAiScreen(contact.number, contact.name)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAiScreen(contact.number, contact.name);
+                      }}
                       style={{
                         padding: '6px',
                         background: 'rgba(99, 102, 241, 0.15)',
@@ -450,7 +474,10 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
                       <Sparkles size={14} color="var(--accent-glow)" />
                     </button>
                     <button
-                      onClick={() => handleCall(contact.number, contact.name)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCall(contact.number, contact.name);
+                      }}
                       style={{
                         padding: '6px',
                         background: 'rgba(16, 185, 129, 0.15)',
