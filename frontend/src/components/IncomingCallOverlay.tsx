@@ -41,6 +41,35 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
     incomingCall.initialPhase || (incomingCall.isOutgoing ? 'CONNECTED' : 'RINGING')
   );
 
+  // Live in-call duration timer
+  const [callDurationSeconds, setCallDurationSeconds] = useState<number>(0);
+
+  useEffect(() => {
+    let timer: any = null;
+    if (callPhase === 'CONNECTED') {
+      timer = setInterval(() => {
+        setCallDurationSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setCallDurationSeconds(0);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [callPhase]);
+
+  const formatCallDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    if (mins >= 60) {
+      const hrs = Math.floor(mins / 60);
+      const remMins = mins % 60;
+      return `${pad(hrs)}:${pad(remMins)}:${pad(secs)}`;
+    }
+    return `${pad(mins)}:${pad(secs)}`;
+  };
+
   const geoInfo = React.useMemo(() => {
     return GeoTelecomResolver.resolve(incomingCall.phoneNumber);
   }, [incomingCall.phoneNumber]);
@@ -884,6 +913,63 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
             </span>
           )}
         </div>
+
+        {/* Connected Call Duration Pill */}
+        {callPhase === 'CONNECTED' && (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              marginTop: 8,
+              padding: '4px 12px',
+              borderRadius: 20,
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              color: '#34d399',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.86rem',
+              fontWeight: 700,
+              letterSpacing: '0.04em'
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#10b981',
+                boxShadow: '0 0 8px #10b981'
+              }}
+            />
+            <span>{formatCallDuration(callDurationSeconds)}</span>
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
+              (Active Call)
+            </span>
+          </div>
+        )}
+
+        {/* Screening Phase Badge */}
+        {callPhase === 'SCREENING' && (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              marginTop: 8,
+              padding: '4px 12px',
+              borderRadius: 20,
+              background: 'rgba(99, 102, 241, 0.15)',
+              border: '1px solid rgba(99, 102, 241, 0.4)',
+              color: '#a5b4fc',
+              fontSize: '0.8rem',
+              fontWeight: 600
+            }}
+          >
+            <Bot size={13} />
+            <span>AI Call Screening In Progress</span>
+          </div>
+        )}
 
         {/* Truecaller Verified or Spam Radar Badge */}
         <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
