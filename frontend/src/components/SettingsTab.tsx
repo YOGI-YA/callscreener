@@ -92,6 +92,20 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
     localStorage.setItem('aegis_emergency_safewords', JSON.stringify(updated));
   };
 
+  const handleTestSosBroadcast = async () => {
+    CapacitorService.triggerHapticFeedback();
+    const loc = await CapacitorService.getEmergencyLocation();
+    const res = await CapacitorService.broadcastEmergencySos({
+      phoneNumber: 'Emergency Contacts',
+      emergencySafeword: safeWords[0] || 'code red',
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      mapsUrl: loc.mapsUrl
+    });
+    setSafeWordNotice(res.message);
+    setTimeout(() => setSafeWordNotice(null), 4000);
+  };
+
   const handleToggleSafeWordsEnabled = (val: boolean) => {
     setSafeWordsEnabled(val);
     localStorage.setItem('aegis_emergency_safewords_enabled', String(val));
@@ -1289,6 +1303,26 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ roleGranted, onRefresh
                 {safeWordNotice}
               </div>
             )}
+
+            {/* 1-Tap Emergency GPS SOS Broadcast */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 'var(--radius-md)' }}>
+              <div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f87171' }}>
+                  Emergency GPS SOS Dispatch
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                  Attach live phone coordinates to urgent family alerts
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleTestSosBroadcast}
+                className="btn-danger"
+                style={{ padding: '5px 10px', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <span>Broadcast SOS</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
