@@ -8,6 +8,7 @@ import { RiskBadge } from './RiskBadge';
 import { VoicemailAudioPlayer } from './VoicemailAudioPlayer';
 import { CapacitorService } from '../services/capacitorService';
 import { ApiService } from '../services/api';
+import { GeoTelecomResolver } from '../services/geoTelecomResolver';
 
 interface CallLogsTabProps {
   logs: ScreeningResult[];
@@ -454,6 +455,9 @@ export const CallLogsTab: React.FC<CallLogsTabProps> = ({
                       </div>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', color: 'var(--accent-glow)', marginTop: 2 }}>
                         {log.phoneNumber}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span>📍 {GeoTelecomResolver.resolve(log.phoneNumber).displayLocation}</span>
                       </div>
                     </div>
 
