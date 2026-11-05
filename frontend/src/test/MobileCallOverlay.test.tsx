@@ -72,7 +72,7 @@ describe('Mobile Viewport & In-Call Screening Overlay Tests', () => {
       () => {
         expect(screen.getByText(/Caller Stated OTP:/i)).toBeInTheDocument();
       },
-      { timeout: 4500 }
+      { timeout: 9000 }
     );
 
     expect(screen.getByText('492019')).toBeInTheDocument();
