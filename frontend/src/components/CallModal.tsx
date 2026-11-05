@@ -7,6 +7,7 @@ import {
 import { ScreeningResult, ScreeningVerdict } from '../types';
 import { RiskBadge, StirShakenBadge, AcousticBotBadge } from './RiskBadge';
 import { VoicemailAudioPlayer } from './VoicemailAudioPlayer';
+import { GeoTelecomResolver } from '../services/geoTelecomResolver';
 
 interface CallModalProps {
   log: ScreeningResult | null;
@@ -37,6 +38,10 @@ export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule })
   const keywords = log.metadata?.detectedKeywords ?? [];
   const displayRationale = maskPii ? maskSensitiveText(log.rationale) : log.rationale;
   const displayCallerName = maskPii ? maskSensitiveText(log.callerName) : log.callerName;
+
+  const geoInfo = React.useMemo(() => {
+    return GeoTelecomResolver.resolve(log.phoneNumber);
+  }, [log.phoneNumber]);
 
   // Extract detected OTPs or verification codes
   const allText = [
@@ -87,6 +92,11 @@ export const CallModal: React.FC<CallModalProps> = ({ log, onClose, onAddRule })
             </h3>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--accent-glow)', marginTop: 2 }}>
               {log.phoneNumber}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+              <span>📍 {geoInfo.displayLocation}</span>
+              <span>•</span>
+              <span>📶 {geoInfo.displayCarrier}</span>
             </div>
           </div>
           <button

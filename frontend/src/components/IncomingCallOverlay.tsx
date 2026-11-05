@@ -10,6 +10,7 @@ import { RiskBadge, StirShakenBadge, DeepfakeBiometricBadge } from './RiskBadge'
 import { AudioWaveformHUD } from './AudioWaveformHUD';
 import { CapacitorService } from '../services/capacitorService';
 import { ApiService } from '../services/api';
+import { GeoTelecomResolver } from '../services/geoTelecomResolver';
 
 interface IncomingCallOverlayProps {
   incomingCall: IncomingCallPayload;
@@ -39,6 +40,10 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
   const [callPhase, setCallPhase] = useState<'RINGING' | 'SCREENING' | 'CONNECTED'>(
     incomingCall.initialPhase || (incomingCall.isOutgoing ? 'CONNECTED' : 'RINGING')
   );
+
+  const geoInfo = React.useMemo(() => {
+    return GeoTelecomResolver.resolve(incomingCall.phoneNumber);
+  }, [incomingCall.phoneNumber]);
 
   useEffect(() => {
     if (incomingCall.initialPhase) {
@@ -869,8 +874,15 @@ export const IncomingCallOverlay: React.FC<IncomingCallOverlayProps> = ({
         </div>
 
         {/* Location & Carrier */}
-        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-          📍 {incomingCall.location || 'Mumbai, Maharashtra'} • {incomingCall.carrier || 'Jio 5G'}
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span>📍 {incomingCall.location || geoInfo.displayLocation}</span>
+          <span>•</span>
+          <span>📶 {incomingCall.carrier || geoInfo.displayCarrier}</span>
+          {geoInfo.isTollFree && (
+            <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: 4, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+              Toll-Free
+            </span>
+          )}
         </div>
 
         {/* Truecaller Verified or Spam Radar Badge */}
