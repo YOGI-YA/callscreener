@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { AudioWaveformHUD } from './AudioWaveformHUD';
 import { CapacitorService } from '../services/capacitorService';
+import { GeoTelecomResolver } from '../services/geoTelecomResolver';
 
 interface Contact {
   id: string;
@@ -611,6 +612,29 @@ export const DialerTab: React.FC<DialerTabProps> = ({ onIncomingCallPayload, onO
                 )}
               </div>
             </div>
+
+            {/* Real-time Geographic Origin & Carrier Pre-Lookup */}
+            {dialNumber.length >= 3 && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 10px',
+                  background: 'rgba(56, 189, 248, 0.08)',
+                  border: '1px solid rgba(56, 189, 248, 0.2)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.74rem',
+                  color: 'var(--text-secondary)',
+                  marginTop: -6,
+                  marginBottom: 2
+                }}
+              >
+                <span>📍 {GeoTelecomResolver.resolve(dialNumber).displayLocation}</span>
+                <span>•</span>
+                <span>📶 {GeoTelecomResolver.resolve(dialNumber).displayCarrier}</span>
+              </div>
+            )}
 
             {/* Extreme Feature: Live Acoustic DSP Waveform HUD in Dialer */}
             {isMicAcousticCheck && (
