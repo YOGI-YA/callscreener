@@ -85,11 +85,12 @@ export const VoicemailAudioPlayer: React.FC<VoicemailAudioPlayerProps> = React.m
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {[1, 1.25, 1.5, 2].map((speed) => (
+          {[0.75, 1, 1.25, 1.5, 2].map((speed) => (
             <button
               key={speed}
               className={`voicemail-speed-btn ${playbackSpeed === speed ? 'active' : ''}`}
               onClick={() => setPlaybackSpeed(speed)}
+              aria-label={`Playback speed ${speed}x`}
             >
               {speed}x
             </button>
